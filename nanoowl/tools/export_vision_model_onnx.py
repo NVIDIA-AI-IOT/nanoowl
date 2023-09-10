@@ -16,8 +16,12 @@ if __name__ == "__main__":
 
     vision_model = model.model.owlvit.vision_model.cuda().eval()
 
+    output = vision_model(data)
+
     torch.onnx.export(
         vision_model,
         data,
-        args.output
+        args.output,
+        input_names=["image"],
+        output_names=["last_hidden_state", "pooled_output"]
     )

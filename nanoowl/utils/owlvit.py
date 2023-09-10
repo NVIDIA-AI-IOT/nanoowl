@@ -1,4 +1,4 @@
-import requests
+
 import PIL.Image
 import torch
 from transformers import (
