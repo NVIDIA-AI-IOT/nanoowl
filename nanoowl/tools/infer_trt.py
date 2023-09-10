@@ -5,7 +5,7 @@ import PIL.Image
 import matplotlib.pyplot as plt
 from typing import Optional
 from transformers.modeling_outputs import BaseModelOutputWithPooling
-
+import time
 from torch2trt import TRTModule
 from nanoowl.utils.owlvit import OwlVit
 
@@ -46,11 +46,15 @@ def load_image_encoder_engine(path: str, pln):
     return Wrapper(image_encoder_trt)
 
 image = PIL.Image.open("assets/dogs.jpg")
-
 vision_model_trt = load_image_encoder_engine("data/owlvit_vision_model.engine", owlvit.model.owlvit.vision_model.post_layernorm)
 
-# owlvit.model.owlvit.vision_model = vision_model_trt
+owlvit.model.owlvit.vision_model = vision_model_trt
 
-detections = owlvit.predict(image, texts=["a dog"])
-
-print(detections)
+count = 5
+t0 = time.perf_counter_ns()
+for i in range(count):
+    detections = owlvit.predict(image, texts=["a dog"])
+torch.cuda.current_stream().synchronize()
+t1 = time.perf_counter_ns()
+dt = (t1 - t0) / 1e9
+print(dt / count)
