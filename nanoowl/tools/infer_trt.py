@@ -57,4 +57,5 @@ for i in range(count):
 torch.cuda.current_stream().synchronize()
 t1 = time.perf_counter_ns()
 dt = (t1 - t0) / 1e9
-print(dt / count)
+print(detections[0])
+print(count / dt)
