@@ -21,6 +21,7 @@ import time
 import numpy as np
 from nanoowl.utils.tensorrt import load_image_encoder_engine
 
+
 def remap_output(output, device):
     if isinstance(output, torch.Tensor):
         return output.to(device)
@@ -31,6 +32,7 @@ def remap_output(output, device):
             resdict[k] = remap_output(v,device)
         return res(**resdict)
 
+
 class OwlVit(object):
     def __init__(self, threshold=0.1, device="cuda", vision_engine=None):
         self.processor = OwlViTProcessor.from_pretrained("google/owlvit-base-patch32", device_map=device)
@@ -38,6 +40,8 @@ class OwlVit(object):
         self.threshold = threshold
         self.device = device
         self.times = {}
+
+        # use transform: huggingface preprocessing is very slow
         self._transform = Compose([
             ToTensor(),
             Resize((768, 768)).to(device),
@@ -52,50 +56,35 @@ class OwlVit(object):
             self.model.owlvit.vision_model = vision_model_trt
 
     def predict(self, image: PIL.Image.Image, texts: Sequence[str]):
-        torch.cuda.current_stream().synchronize()
-        self.times = {}
-        self.times['start'] = time.perf_counter_ns()
+
+        # Preprocess text
         inputs_text = self.processor(text=texts, return_tensors="pt")
 
-        torch.cuda.current_stream().synchronize()
-        self.times['preprocess_text'] = time.perf_counter_ns()
-        # inputs_images = self.processor(images=image, return_tensors="pt")
-        # print(inputs_images["pixel_values"].shape)
-        # inputs_images  = remap_output(self.inputs_images, "cuda")
-        # image = np.asarray(image.resize((768,768)))
-        # image = torch.from_numpy(image).permute(2, 0, 1).cuda()[None, ...].float()
-        inputs_images = {"pixel_values": self._transform(image)[None, ...]}#self.inputs_images#{"pixel_values": torch.randn(1, 3, 768, 768)}
-
-        torch.cuda.current_stream().synchronize()
-        self.times['preprocess_images'] = time.perf_counter_ns()
+        # Preprocess image
+        inputs_images = {"pixel_values": self._transform(image)[None, ...]}
         inputs = {}
         inputs.update(inputs_text)
         inputs.update(inputs_images)
 
+        # Ensure all devices on specified device
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        torch.cuda.current_stream().synchronize()
-        self.times['move_inputs'] = time.perf_counter_ns()
 
+        # Run model
         outputs = self.model(**inputs)
-        
-        torch.cuda.current_stream().synchronize()
-        self.times['infer'] = time.perf_counter_ns()
 
+        # Copy outputs to CPU (for postprocessing)
         outputs = remap_output(outputs, "cpu")
 
-        torch.cuda.current_stream().synchronize()
-        self.times['move_outputs'] = time.perf_counter_ns()
-
+        # Postprocess output
         target_sizes = torch.Tensor([image.size[::-1]])
         results = self.processor.post_process_object_detection(outputs=outputs, target_sizes=target_sizes, threshold=self.threshold)
-        torch.cuda.current_stream().synchronize()
-        self.times['postprocess'] = time.perf_counter_ns()
+
+        # Format output
         i = 0
         boxes, scores, labels = results[i]["boxes"], results[i]["scores"], results[i]["labels"]
         detections = []
         for box, score, label in zip(boxes, scores, labels):
             detection = {"bbox": box.tolist(), "score": float(score), "label": int(label), "text": texts[label]}
             detections.append(detection)
-        torch.cuda.current_stream().synchronize()
-        self.times['end'] = time.perf_counter_ns()
+
         return detections
