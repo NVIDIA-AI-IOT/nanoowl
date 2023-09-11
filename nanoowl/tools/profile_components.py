@@ -15,9 +15,9 @@ owlvit = OwlVit()
 
 image = PIL.Image.open("assets/dogs.jpg")
 
-# vision_model_trt = load_image_encoder_engine("data/owlvit_vision_model.engine", owlvit.model.owlvit.vision_model.post_layernorm)
+vision_model_trt = load_image_encoder_engine("data/owlvit_vision_model.engine", owlvit.model.owlvit.vision_model.post_layernorm)
 
-# owlvit.model.owlvit.vision_model = vision_model_trt
+owlvit.model.owlvit.vision_model = vision_model_trt
 
 vision_recorder = ModuleRecorder(owlvit.model.owlvit.vision_model)
 text_recorder = ModuleRecorder(owlvit.model.owlvit.text_model)
@@ -48,4 +48,4 @@ print(to_ms(owlvit.times['move_outputs'] - owlvit.times['infer']))
 print(to_ms(owlvit.times['postprocess'] - owlvit.times['move_outputs']))
 print(to_ms(owlvit.times['end'] - owlvit.times['postprocess']))
 
-# print(owlvit.processor.image_processor)
+print(detections)

@@ -9,6 +9,12 @@ from transformers import (
 from transformers.models.owlvit.modeling_owlvit import (
     OwlViTObjectDetectionOutput
 )
+from torchvision.transforms import (
+    ToTensor,
+    Normalize,
+    Resize,
+    Compose
+)
 from typing import Sequence, List, Tuple
 import torch.nn as nn
 import time
@@ -31,7 +37,14 @@ class OwlVit(object):
         self.threshold = threshold
         self.device = device
         self.times = {}
-        self.inputs_images = {"pixel_values": torch.randn(1, 3, 768, 768)}
+        self._transform = Compose([
+            ToTensor(),
+            Resize((768, 768)).to(device),
+            Normalize(
+                mean=[0.48145466, 0.4578275, 0.40821073],
+                std=[0.26862954, 0.26130258, 0.27577711]
+            ).to(device)
+        ])
 
     def predict(self, image: PIL.Image.Image, texts: Sequence[str]):
         torch.cuda.current_stream().synchronize()
@@ -44,9 +57,9 @@ class OwlVit(object):
         # inputs_images = self.processor(images=image, return_tensors="pt")
         # print(inputs_images["pixel_values"].shape)
         # inputs_images  = remap_output(self.inputs_images, "cuda")
-        image = np.asarray(image.resize((768,768)))
-        image = torch.from_numpy(image).permute(2, 0, 1).cuda()[None, ...].float()
-        inputs_images = {"pixel_values": image}#self.inputs_images#{"pixel_values": torch.randn(1, 3, 768, 768)}
+        # image = np.asarray(image.resize((768,768)))
+        # image = torch.from_numpy(image).permute(2, 0, 1).cuda()[None, ...].float()
+        inputs_images = {"pixel_values": self._transform(image)[None, ...]}#self.inputs_images#{"pixel_values": torch.randn(1, 3, 768, 768)}
 
         torch.cuda.current_stream().synchronize()
         self.times['preprocess_images'] = time.perf_counter_ns()
