@@ -19,6 +19,7 @@ from typing import Sequence, List, Tuple
 import torch.nn as nn
 import time
 import numpy as np
+from nanoowl.utils.tensorrt import load_image_encoder_engine
 
 def remap_output(output, device):
     if isinstance(output, torch.Tensor):
@@ -31,7 +32,7 @@ def remap_output(output, device):
         return res(**resdict)
 
 class OwlVit(object):
-    def __init__(self, threshold=0.1, device="cuda"):
+    def __init__(self, threshold=0.1, device="cuda", vision_engine=None):
         self.processor = OwlViTProcessor.from_pretrained("google/owlvit-base-patch32", device_map=device)
         self.model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32", device_map=device)
         self.threshold = threshold
@@ -45,6 +46,10 @@ class OwlVit(object):
                 std=[0.26862954, 0.26130258, 0.27577711]
             ).to(device)
         ])
+
+        if vision_engine is not None:
+            vision_model_trt = load_image_encoder_engine(vision_engine, self.model.owlvit.vision_model.post_layernorm)
+            self.model.owlvit.vision_model = vision_model_trt
 
     def predict(self, image: PIL.Image.Image, texts: Sequence[str]):
         torch.cuda.current_stream().synchronize()

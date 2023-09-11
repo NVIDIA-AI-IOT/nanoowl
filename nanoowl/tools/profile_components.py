@@ -11,13 +11,13 @@ from nanoowl.utils.owlvit import OwlVit
 from nanoowl.utils.module_recorder import ModuleRecorder
 from nanoowl.utils.tensorrt import load_image_encoder_engine
 
-owlvit = OwlVit()
+owlvit = OwlVit(vision_engine="data/owlvit_vision_model.engine")
 
 image = PIL.Image.open("assets/dogs.jpg")
 
-vision_model_trt = load_image_encoder_engine("data/owlvit_vision_model.engine", owlvit.model.owlvit.vision_model.post_layernorm)
+# vision_model_trt = load_image_encoder_engine("data/owlvit_vision_model.engine", owlvit.model.owlvit.vision_model.post_layernorm)
 
-owlvit.model.owlvit.vision_model = vision_model_trt
+# owlvit.model.owlvit.vision_model = vision_model_trt
 
 vision_recorder = ModuleRecorder(owlvit.model.owlvit.vision_model)
 text_recorder = ModuleRecorder(owlvit.model.owlvit.text_model)
