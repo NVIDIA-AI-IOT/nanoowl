@@ -80,7 +80,6 @@ class Attention(nn.Module):
 
         return out
     
-
 class TimmImageEncoder(nn.Module):
     def __init__(self, 
             model_name: str = "resnet18",
@@ -90,7 +89,8 @@ class TimmImageEncoder(nn.Module):
             num_attn_heads=1,
             mlp_hidden_size=None,
             mlp_act=nn.GELU,
-            include_post_layernorm=True
+            include_post_layernorm=True,
+            pos_init=1e-2
         ):
         super().__init__()
 
@@ -110,13 +110,13 @@ class TimmImageEncoder(nn.Module):
         # Apply position embedding to vision features
         self.register_parameter(
             "pos_embedding", 
-            nn.Parameter(1e-5 * torch.randn(1, feature_shape[0] * feature_shape[1], embed_dim))
+            nn.Parameter(pos_init * torch.randn(1, feature_shape[0] * feature_shape[1], embed_dim))
         )
 
         # Concatenate special token at index 0 with embeddings
         self.register_parameter(
             "special_token",
-            nn.Parameter(1e-5 * torch.randn(1, 1, embed_dim))
+            nn.Parameter(pos_init * torch.randn(1, 1, embed_dim))
         )
 
         # Apply one multi-head attention layer
