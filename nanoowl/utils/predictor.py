@@ -55,7 +55,7 @@ class Predictor(object):
         # Overwrite with different vision encoder
         if vision_model_name is not None:
             assert vision_checkpoint is not None
-            vision_model = create_model(args.vision_model_name)
+            vision_model = create_model(vision_model_name)
             vision_model.load_state_dict(torch.load(vision_checkpoint)['model'])
             vision_model = vision_model.eval().to(device)
             self.model.owlvit.vision_model = vision_model

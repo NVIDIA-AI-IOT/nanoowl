@@ -102,7 +102,7 @@ if __name__ == "__main__":
                 target = image_encoder_trt.post_layernorm(target)
 
             optimizer.zero_grad()
-            output, _ = image_encoder_student(image_student)
+            output = image_encoder_student(image_student).last_hidden_state
             output = image_encoder_student.post_layernorm(output)
 
             loss = loss_function(output, target)
