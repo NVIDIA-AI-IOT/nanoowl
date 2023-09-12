@@ -22,6 +22,7 @@ import math
 from .registry import register_model
 from torch import Tensor
 
+from transformers.modeling_outputs import BaseModelOutputWithPooling
 
 class Attention(nn.Module):
     """
@@ -142,10 +143,10 @@ class TimmImageEncoder(nn.Module):
         self.include_post_layernorm = include_post_layernorm
         self.post_layernorm = nn.LayerNorm(embed_dim)
         
-    def forward(self, x):
+    def forward(self, pixel_values, **kwargs):
 
         # Flatten vision features
-        features = self.backbone(x)[-1]
+        features = self.backbone(pixel_values)[-1]
         features = self.feature_proj(features)
         b, c, h, w = features.shape
         features = features.permute(0, 2, 3, 1).reshape(b, h * w, c)
@@ -174,7 +175,10 @@ class TimmImageEncoder(nn.Module):
         if self.include_post_layernorm:
             pooled_output = self.post_layernorm(pooled_output)
 
-        return last_hidden_state, pooled_output
+        return BaseModelOutputWithPooling(
+            last_hidden_state=last_hidden_state,
+            pooler_output=pooled_output
+        )
     
 
 @register_model("resnet18")
