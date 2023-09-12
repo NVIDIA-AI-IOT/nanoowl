@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     image = PIL.Image.open(args.image)
 
-    detections = predictor.predict(image, texts=["an owl", "a glove", "a face"])
+    detections = predictor.predict(image, texts=args.prompt)
 
     for detection in detections:
         draw_detection(image, detection)
