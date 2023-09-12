@@ -71,8 +71,8 @@ NanoOWL runs real-time on Jetson AGX Orin.
 2. Install the NanoOWL package.
 
     ```bash
-    git clone https://github.com/NVIDIA-AI-IOT/nanosam
-    cd nanosam
+    git clone https://github.com/NVIDIA-AI-IOT/nanoowl
+    cd nanoowl
     python3 setup.py develop --user
     ```
 
