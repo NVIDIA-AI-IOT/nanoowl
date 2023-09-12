@@ -1,4 +1,4 @@
-# NanoSAM
+# NanoOWL
 
 <p align="center"><a href="#usage"/>👍 Usage</a> - <a href="#performance"/>⏱️ Performance</a> - <a href="#setup">🛠️ Setup</a> - <a href="#examples">🤸 Examples</a> - <a href="#acknowledgement">👏 Acknowledgment</a> - <a href="#see-also">🔗 See also</a></p>
 
@@ -44,7 +44,7 @@ NanoSAM runs real-time on Jetson AGX Orin.
     <thead>
         <tr>
             <th rowspan=1 style="text-align: center; border-right: solid 1px">Model †</th>
-            <th colspan=1 style="text-align: center; border-right: solid 1px">:stopwatch: Jetson AGX Orin (ms)</th>
+            <th colspan=1 style="text-align: center; border-right: solid 1px">⏱️ Jetson AGX Orin (ms)</th>
         </tr>
     </thead>
     <tbody>
@@ -70,10 +70,6 @@ NanoSAM runs real-time on Jetson AGX Orin.
 ### Example 2 - Live camera demo
 
 ### Example 3 - Instance segmentation with [NanoSAM](https://github.com/NVIDIA-AI-IOT/nanosam)
-
-
-<a id="examples"></a>
-## 🤸 Examples
 
 
 <a id="acknowledgement"></a>
