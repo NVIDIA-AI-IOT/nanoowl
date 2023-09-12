@@ -63,6 +63,56 @@ NanoSAM runs real-time on Jetson AGX Orin.
 <a id="setup"></a>
 ## 🛠️ Setup
 
+1. Install the dependencies
+
+    1. Install PyTorch
+
+    2. Install [torch2trt](https://github.com/NVIDIA-AI-IOT/torch2trt)
+    3. Install NVIDIA TensorRT
+    4. Install the Transformers library
+
+        ```bash
+        python3 -m pip install transformers
+        ```
+    5. (optional) Install NanoSAM (for the instance segmentation example)
+
+2. Install the NanoOWL package.
+
+    ```bash
+    git clone https://github.com/NVIDIA-AI-IOT/nanosam
+    cd nanosam
+    python3 setup.py develop --user
+    ```
+
+3. Build the TensorRT engine for the OWL-ViT vision encoder
+
+    1. Export the OWL-ViT vision encoder to ONNX
+
+        ```bash
+        python3 -m nanoowl.tools.export_vision_model_onnx \
+            --output="data/owlvit_vision_model.onnx"
+        ```
+    
+    2. Build the TensorRT engine with ``trtexec``
+
+        ```bash
+        trtexec \
+            --onnx=data/owlvit_vision_model.onnx \
+            --saveEngine=data/owlvit_vision_model.engine \
+            --fp16
+        ```
+
+4. Run the basic usage example to ensure everything is working
+
+    ```bash
+    python3 examples/basic_usage.py \
+        --vision_engine=data/owlvit_vision_model.engine \
+        --thresh=0.1
+    ```
+
+That's it!  If everything is working properly, you should see a visualization saved
+to ``data/visualize_owlvit_out.jpg``.  
+
 <a id="examples"></a>
 ## 🤸 Examples
 
