@@ -50,11 +50,11 @@ NanoSAM runs real-time on Jetson AGX Orin.
     </thead>
     <tbody>
         <tr>
-            <td style="text-align: center; border-right: solid 1px">OWL-ViT (transformers)</td>
+            <td style="text-align: center; border-right: solid 1px">OWL-ViT (transformers default, CPU)</td>
             <td style="text-align: center; border-right: solid 1px">950</td>
         </tr>
         <tr>
-            <td style="text-align: center; border-right: solid 1px">NanoOWL (OWL-ViT optimized)</td>
+            <td style="text-align: center; border-right: solid 1px">NanoOWL (OWL-ViT GPU+TRT optimized)</td>
             <td style="text-align: center; border-right: solid 1px">45</td>
         </tr>
     </tbody>
