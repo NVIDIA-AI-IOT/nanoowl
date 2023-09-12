@@ -21,6 +21,7 @@ import time
 import numpy as np
 from nanoowl.utils.tensorrt import load_image_encoder_engine
 from nanoowl.utils.transform import build_owlvit_vision_transform
+from nanoowl.models import create_model
 
 
 def remap_output(output, device):
@@ -35,7 +36,13 @@ def remap_output(output, device):
 
 
 class Predictor(object):
-    def __init__(self, threshold=0.1, device="cuda", vision_engine=None):
+    def __init__(self, 
+            threshold=0.1, 
+            device="cuda", 
+            vision_engine=None,
+            vision_checkpoint=None,
+            vision_model_name=None
+        ):
         self.processor = OwlViTProcessor.from_pretrained("google/owlvit-base-patch32", device_map=device)
         self.model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32", device_map=device)
         self.threshold = threshold
@@ -45,6 +52,15 @@ class Predictor(object):
         # use transform: huggingface preprocessing is very slow
         self._transform = build_owlvit_vision_transform(device)
 
+        # Overwrite with different vision encoder
+        if vision_model_name is not None:
+            assert vision_checkpoint is not None
+            vision_model = create_model(args.vision_model_name)
+            vision_model.load_state_dict(torch.load(vision_checkpoint)['model'])
+            vision_model = vision_model.eval().to(device)
+            self.model.owlvit.vision_model = vision_model
+
+        # Overwrite with engine
         if vision_engine is not None:
             vision_model_trt = load_image_encoder_engine(vision_engine, self.model.owlvit.vision_model.post_layernorm)
             self.model.owlvit.vision_model = vision_model_trt
