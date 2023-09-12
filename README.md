@@ -4,6 +4,8 @@
 
 NanoOWL is a project that optimizes [OWL-ViT](https://huggingface.co/docs/transformers/model_doc/owlvit) to run 🔥 ***real-time*** 🔥 on [NVIDIA Jetson AGX Orin](https://store.nvidia.com/en-us/jetson/store) with [NVIDIA TensorRT](https://developer.nvidia.com/tensorrt).  
 
+<p align="center"><img src="assets/basic_usage_out.jpg" height="256px"/></p>
+
 > Interested in detecting object masks as well?  Try combining NanoOWL with
 > [NanoSAM](https://github.com/NVIDIA-AI-IOT/nanosam) for zero-shot open-vocabulary 
 > instance segmentation.
