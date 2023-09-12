@@ -4,16 +4,6 @@
 
 NanoOWL is a project that optimizes [OWL-ViT](https://huggingface.co/docs/transformers/model_doc/owlvit) to run 🔥 ***real-time*** 🔥 on [NVIDIA Jetson AGX Orin](https://store.nvidia.com/en-us/jetson/store) with [NVIDIA TensorRT](https://developer.nvidia.com/tensorrt).  
 
-*Why NanoOWL?*
-
-OWL-ViT is a powerful model that is capable of open-vocabulary zero-shot detection.
-This means you can detect custom objects simply by providing text prompts (no training required).  Unfortunately, OWL-ViT shipped in HuggingFace transformers library
-is not well optimized for inference and runs ~1FPS out-of-the box (the pipeline
-relies heavily on the CPU by default).  By optimizing the pipeline to better utilize the GPU, and
-optimizing OWL-ViT's image encoder with NVIDIA TensorRT, NanoOWL achieves full pipeline 
-framerate of ~22FPS on NVIDIA Jetson AGX Orin.  This allows you to run open-vocabulary
-detection at near camera framerates at the edge, unlocking a variety new applications.
-
 > Interested in detecting object masks as well?  Try combining NanoOWL with
 > [NanoSAM](https://github.com/NVIDIA-AI-IOT/nanosam) for zero-shot open-vocabulary 
 > instance segmentation.
