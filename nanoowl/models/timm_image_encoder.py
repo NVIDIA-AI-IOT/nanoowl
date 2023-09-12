@@ -87,7 +87,7 @@ class TimmImageEncoder(nn.Module):
             pretrained: bool = False,
             embed_dim: int = 768,
             feature_shape: Tuple[int, int] = (24, 24),
-            num_attn_heads=4,
+            num_attn_heads=1,
             mlp_hidden_size=None,
             mlp_act=nn.GELU,
             include_post_layernorm=False
@@ -159,12 +159,14 @@ class TimmImageEncoder(nn.Module):
         embeddings = torch.cat([special_token, features], dim=1)
 
         # Apply MHA
+        res = embeddings
         embeddings = self.pre_attn_norm(embeddings)
-        embeddings = self.attn(embeddings, embeddings, embeddings)
+        embeddings = res + self.attn(embeddings, embeddings, embeddings)
 
         # Apply MLP
+        res = embeddings
         embeddings = self.pre_proj_norm(embeddings)
-        embeddings = self.proj(embeddings)
+        embeddings = res + self.proj(embeddings)
 
         # Pooled output
         last_hidden_state = embeddings
@@ -194,3 +196,8 @@ def resnet50():
 @register_model("efficientvit_b0")
 def efficientvit_b0():
     return TimmImageEncoder('efficientvit_b0', pretrained=True)
+
+
+@register_model("efficientvit_b0_h8")
+def efficientvit_b0_h8():
+    return TimmImageEncoder('efficientvit_b0', pretrained=True, num_attn_heads=8)

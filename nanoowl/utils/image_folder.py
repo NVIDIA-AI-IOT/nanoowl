@@ -22,14 +22,14 @@ from nanoowl.utils.transform import build_owlvit_vision_transform
 
 
 class ImageFolder:
-    def __init__(self, root: str, transform = None, device="cpu"):
+    def __init__(self, root: str, transform = None, device="cpu", is_train=False):
         self.root = root
         image_paths = glob.glob(os.path.join(root, "*.jpg"))
         image_paths += glob.glob(os.path.join(root, "*.png"))
         self.image_paths = image_paths
 
         if transform is None:
-            transform = build_owlvit_vision_transform(device, is_train=True)
+            transform = build_owlvit_vision_transform(device, is_train=is_train)
 
         self.transform = transform
 

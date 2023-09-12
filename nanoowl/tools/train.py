@@ -121,13 +121,19 @@ if __name__ == "__main__":
         plt.figure(figsize=(10, 10))
 
         # plot by channel
-        plt.subplot(211)
+        plt.subplot(311)
         plt.plot(target[0, :, 0].detach().cpu(), 'b-')
         plt.plot(output[0, :, 0].detach().cpu(), 'g-')
 
         # plot by token id
-        plt.subplot(212)
+        plt.subplot(312)
         plt.plot(target[0, 0, :].detach().cpu(), 'b-')
         plt.plot(output[0, 0, :].detach().cpu(), 'g-')
+
+        # plot other token id
+        idx = 1 + 12*24 + 12 # around center
+        plt.subplot(313)
+        plt.plot(target[0, idx, :].detach().cpu(), 'b-')
+        plt.plot(output[0, idx, :].detach().cpu(), 'g-')
         plt.savefig(os.path.join(args.output_dir, f"epoch_{epoch}.png"))
         plt.close()
