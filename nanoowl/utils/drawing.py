@@ -32,8 +32,8 @@ def draw_detection(
     bbox_size = math.sqrt(bbox_height * bbox_width)
 
     if draw_bbox:
-        draw.rectangle(((x0, y0), (x1, y1)), fill=(118, 185, 0, 80))
-        draw.rectangle(((x0, y0), (x1, y1)), outline=(255, 255, 255, 255), width=3)
+        # draw.rectangle(((x0, y0), (x1, y1)), fill=(118, 185, 0, 160))
+        draw.rectangle(((x0, y0), (x1, y1)), outline=(255, 255, 255, 255), width=8)
 
     if draw_text:
 
