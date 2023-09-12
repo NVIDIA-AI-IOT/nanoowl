@@ -8,12 +8,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=str, default="data/owlvit_vision_model.onnx")
     parser.add_argument("--dynamic_axes", action="store_true")
+    parser.add_argument("--batch_size", type=int, default=1)
     parser.parse_args()
     args = parser.parse_args()
 
     predictor = Predictor(vision_engine=None)
 
-    data = torch.randn(1, 3, 768, 768).cuda()
+    data = torch.randn(args.batch_size, 3, 768, 768).cuda()
 
     vision_model = predictor.model.owlvit.vision_model.cuda().eval()
 

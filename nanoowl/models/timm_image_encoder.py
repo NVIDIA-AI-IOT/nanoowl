@@ -18,8 +18,68 @@ import torch
 import torch.nn as nn
 from typing import Tuple
 import timm
+import math
 from .registry import register_model
+from torch import Tensor
 
+
+class Attention(nn.Module):
+    """
+    An attention layer that allows for downscaling the size of the embedding
+    after projection to queries, keys, and values.
+    """
+
+    def __init__(
+        self,
+        embedding_dim: int,
+        num_heads: int,
+        downsample_rate: int = 1,
+    ) -> None:
+        super().__init__()
+        self.embedding_dim = embedding_dim
+        self.internal_dim = embedding_dim // downsample_rate
+        self.num_heads = num_heads
+        assert self.internal_dim % num_heads == 0, "num_heads must divide embedding_dim."
+
+        self.q_proj = nn.Linear(embedding_dim, self.internal_dim)
+        self.k_proj = nn.Linear(embedding_dim, self.internal_dim)
+        self.v_proj = nn.Linear(embedding_dim, self.internal_dim)
+        self.out_proj = nn.Linear(self.internal_dim, embedding_dim)
+
+    def _separate_heads(self, x: Tensor, num_heads: int) -> Tensor:
+        b, n, c = x.shape
+        x = x.reshape(b, n, num_heads, c // num_heads)
+        return x.transpose(1, 2)  # B x N_heads x N_tokens x C_per_head
+
+    def _recombine_heads(self, x: Tensor) -> Tensor:
+        b, n_heads, n_tokens, c_per_head = x.shape
+        x = x.transpose(1, 2)
+        return x.reshape(b, n_tokens, n_heads * c_per_head)  # B x N_tokens x C
+
+    def forward(self, q: Tensor, k: Tensor, v: Tensor) -> Tensor:
+        # Input projections
+        q = self.q_proj(q)
+        k = self.k_proj(k)
+        v = self.v_proj(v)
+
+        # Separate into heads
+        q = self._separate_heads(q, self.num_heads)
+        k = self._separate_heads(k, self.num_heads)
+        v = self._separate_heads(v, self.num_heads)
+
+        # Attention
+        _, _, _, c_per_head = q.shape
+        attn = q @ k.permute(0, 1, 3, 2)  # B x N_heads x N_tokens x N_tokens
+        attn = attn / math.sqrt(c_per_head)
+        attn = torch.softmax(attn, dim=-1)
+
+        # Get output
+        out = attn @ v
+        out = self._recombine_heads(out)
+        out = self.out_proj(out)
+
+        return out
+    
 
 class TimmImageEncoder(nn.Module):
     def __init__(self, 
@@ -40,10 +100,10 @@ class TimmImageEncoder(nn.Module):
             features_only=True
         )
 
-        channels = self.backbone.feature_info.channels()
+        channels = self.backbone.feature_info.channels()[-1]
 
         # Map vision features to embedding dimension
-        self.pre_attn_proj = nn.Sequential(
+        self.feature_proj = nn.Sequential(
             nn.Conv2d(channels, embed_dim, 1, padding=0)
         )
 
@@ -61,7 +121,7 @@ class TimmImageEncoder(nn.Module):
 
         # Apply one multi-head attention layer
         self.pre_attn_norm = nn.LayerNorm(embed_dim)
-        self.attn = nn.MultiheadAttention(
+        self.attn = Attention(
             embed_dim,
             num_heads=num_attn_heads
         )
@@ -87,6 +147,7 @@ class TimmImageEncoder(nn.Module):
 
         # Flatten vision features
         features = self.backbone(x)[-1]
+        features = self.feature_proj(features)
         b, c, h, w = features.shape
         features = features.permute(0, 2, 3, 1).reshape(b, h * w, c)
 
@@ -99,7 +160,7 @@ class TimmImageEncoder(nn.Module):
 
         # Apply MHA
         embeddings = self.pre_attn_norm(embeddings)
-        embeddings = self.attn(embeddings)
+        embeddings = self.attn(embeddings, embeddings, embeddings)
 
         # Apply MLP
         embeddings = self.pre_proj_norm(embeddings)

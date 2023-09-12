@@ -29,7 +29,7 @@ class ImageFolder:
         self.image_paths = image_paths
 
         if transform is None:
-            transform = build_owlvit_vision_transform(device)
+            transform = build_owlvit_vision_transform(device, is_train=True)
 
         self.transform = transform
 

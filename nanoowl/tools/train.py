@@ -29,7 +29,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("images", type=str, help="The path to images to use for distillation")
     parser.add_argument("output_dir", type=str, help="The directory to store checkpoints and training visualizations.")
-    parser.add_argument("--model_name", type=str, default="resnet18", choices=list_models(), help="The NanoSAM model name.")
+    parser.add_argument("--model_name", type=str, default="efficientvit_b0", choices=list_models(), help="The NanoSAM model name.")
     parser.add_argument("--student_size", type=int, default=768, help="The size of image to feed to the student during distillation.")
     parser.add_argument("--num_images", type=int, default=None, help="Limit the number of images per epoch.  Helpful for quick training runs when experimenting.")
     parser.add_argument("--num_epochs", type=int, default=200, help="The number of training epochs.")
@@ -40,7 +40,7 @@ if __name__ == "__main__":
         help="The loss function to use for distillation.")
     parser.add_argument("--teacher_image_encoder_engine", 
         type=str, 
-        default="data/owlvit_vision_model.engine",
+        default="data/owlvit_vision_model_bs16.engine",
         help="The path to the image encoder engine to use as a teacher model."
     )
     args = parser.parse_args()
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    image_encoder_trt = load_image_encoder_engine(args.teacher_image_encoder_engine)
+    image_encoder_trt = load_image_encoder_engine(args.teacher_image_encoder_engine, use_wrapper=False)
 
     image_encoder_student = create_model(args.model_name).cuda()
 
@@ -121,13 +121,13 @@ if __name__ == "__main__":
         plt.figure(figsize=(10, 10))
 
         # plot by channel
-        plt.subplot(121)
-        plt.plot(output[0, :, 0].detach().cpu())
-        plt.plot(target[0, :, 0].detach().cpu())
+        plt.subplot(211)
+        plt.plot(target[0, :, 0].detach().cpu(), 'b-')
+        plt.plot(output[0, :, 0].detach().cpu(), 'g-')
 
         # plot by token id
-        plt.subplot(122)
-        plt.plot(output[0, 0, :].detach().cpu())
-        plt.plot(target[0, 0, :].detach().cpu())
+        plt.subplot(212)
+        plt.plot(target[0, 0, :].detach().cpu(), 'b-')
+        plt.plot(output[0, 0, :].detach().cpu(), 'g-')
         plt.savefig(os.path.join(args.output_dir, f"epoch_{epoch}.png"))
         plt.close()
