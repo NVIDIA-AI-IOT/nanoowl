@@ -20,6 +20,7 @@ import torch.nn as nn
 import time
 import numpy as np
 from nanoowl.utils.tensorrt import load_image_encoder_engine
+from nanoowl.utils.transform import build_owlvit_vision_transform
 
 
 def remap_output(output, device):
@@ -42,14 +43,7 @@ class Predictor(object):
         self.times = {}
 
         # use transform: huggingface preprocessing is very slow
-        self._transform = Compose([
-            ToTensor(),
-            Resize((768, 768)).to(device),
-            Normalize(
-                mean=[0.48145466, 0.4578275, 0.40821073],
-                std=[0.26862954, 0.26130258, 0.27577711]
-            ).to(device)
-        ])
+        self._transform = build_owlvit_vision_transform(device)
 
         if vision_engine is not None:
             vision_model_trt = load_image_encoder_engine(vision_engine, self.model.owlvit.vision_model.post_layernorm)
