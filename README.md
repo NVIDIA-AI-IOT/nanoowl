@@ -39,7 +39,7 @@ detectors = predictor.predict(image, texts=["a dog"])
 <a id="performance"></a>
 ## ⏱️ Performance
 
-NanoSAM runs real-time on Jetson AGX Orin.
+NanoOWL runs real-time on Jetson AGX Orin.
 
 <table style="border-top: solid 1px; border-left: solid 1px; border-right: solid 1px; border-bottom: solid 1px">
     <thead>
