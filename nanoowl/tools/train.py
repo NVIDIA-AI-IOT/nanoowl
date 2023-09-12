@@ -16,7 +16,7 @@
 import tqdm
 import torch
 import argparse
-from nanoowl.utils.predictor import load_image_encoder_engine
+from nanoowl.utils.predictor import load_image_encoder_engine, Predictor
 from nanoowl.utils.image_folder import ImageFolder
 from nanoowl.models import create_model, list_models
 import os
@@ -48,7 +48,9 @@ if __name__ == "__main__":
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    image_encoder_trt = load_image_encoder_engine(args.teacher_image_encoder_engine, use_wrapper=False)
+    predictor = Predictor(vision_engine=None)
+    image_encoder_trt = load_image_encoder_engine(args.teacher_image_encoder_engine, pln=predictor.model.owlvit.vision_model.post_layernorm, use_wrapper=True)
+
 
     image_encoder_student = create_model(args.model_name).cuda()
 
@@ -96,10 +98,12 @@ if __name__ == "__main__":
                 image_student = image
 
             with torch.no_grad():
-                target, _ = image_encoder_trt(image)
+                target = image_encoder_trt(image).last_hidden_state
+                target = image_encoder_trt.post_layernorm(target)
 
             optimizer.zero_grad()
             output, _ = image_encoder_student(image_student)
+            output = image_encoder_student.post_layernorm(output)
 
             loss = loss_function(output, target)
 

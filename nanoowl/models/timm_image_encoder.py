@@ -90,7 +90,7 @@ class TimmImageEncoder(nn.Module):
             num_attn_heads=1,
             mlp_hidden_size=None,
             mlp_act=nn.GELU,
-            include_post_layernorm=False
+            include_post_layernorm=True
         ):
         super().__init__()
 
@@ -140,8 +140,7 @@ class TimmImageEncoder(nn.Module):
 
         # Apply post layer-norm to pooled output
         self.include_post_layernorm = include_post_layernorm
-        if self.include_post_layernorm:
-            self.post_layernorm = nn.LayerNorm(embed_dim)
+        self.post_layernorm = nn.LayerNorm(embed_dim)
         
     def forward(self, x):
 

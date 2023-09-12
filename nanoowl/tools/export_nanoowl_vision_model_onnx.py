@@ -14,30 +14,33 @@ if __name__ == "__main__":
     parser.add_argument("output", type=str)
     parser.add_argument("--dynamic_axes", action="store_true")
     parser.add_argument("--batch_size", type=int, default=1)
+    parser.add_argument("--add_pln", action="store_true")
     parser.parse_args()
     args = parser.parse_args()
-
-    # grab post-layernorm from original owlvit
-    predictor = Predictor(vision_engine=None)
-    post_layernorm = predictor.model.owlvit.vision_model.post_layernorm
-
-    # wrapper to apply postlayernorm to pooled output (to match owlvit encoder semantics)
-    class Wrapper(nn.Module):
-        def __init__(self, model, pln):
-            super().__init__()
-            self.model = model
-            self.post_layernorm = pln
-
-        def forward(self, image):
-            features, pooled = self.model(image)
-            pooled = self.post_layernorm(pooled)
-            return features, pooled
 
     model = create_model(args.model_name)
     model.load_state_dict(torch.load(args.checkpoint)['model'])
 
-    wrapper = Wrapper(model, post_layernorm)
-    wrapper = wrapper.cuda().eval()
+    if args.add_pln:
+        # grab post-layernorm from original owlvit
+        predictor = Predictor(vision_engine=None)
+        post_layernorm = predictor.model.owlvit.vision_model.post_layernorm
+
+        # wrapper to apply postlayernorm to pooled output (to match owlvit encoder semantics)
+        class Wrapper(nn.Module):
+            def __init__(self, model, pln):
+                super().__init__()
+                self.model = model
+                self.post_layernorm = pln
+
+            def forward(self, image):
+                features, pooled = self.model(image)
+                pooled = self.post_layernorm(pooled)
+                return features, pooled
+
+        model = Wrapper(model, post_layernorm)
+
+    model = model.cuda().eval()
 
     data = torch.randn(args.batch_size, 3, 768, 768).cuda()
 
