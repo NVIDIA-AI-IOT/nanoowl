@@ -33,7 +33,7 @@ def remap_output(output, device):
         return res(**resdict)
 
 
-class OwlVit(object):
+class Predictor(object):
     def __init__(self, threshold=0.1, device="cuda", vision_engine=None):
         self.processor = OwlViTProcessor.from_pretrained("google/owlvit-base-patch32", device_map=device)
         self.model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32", device_map=device)

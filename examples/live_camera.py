@@ -5,7 +5,7 @@ import numpy as np
 import argparse
 import time
 import os
-from nanoowl.utils.owlvit import OwlVit
+from nanoowl.utils.predictor import Predictor
 from nanoowl.utils.module_recorder import ModuleRecorder
 from nanoowl.utils.tensorrt import load_image_encoder_engine
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     prompt = args.prompt
 
-    owlvit = OwlVit(threshold=args.thresh, vision_engine="data/owlvit_vision_model.engine")
+    predictor = Predictor(threshold=args.thresh, vision_engine="data/owlvit_vision_model.engine")
 
     def cv2_to_pil(image):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
         image_pil = cv2_to_pil(image)
 
-        detections = owlvit.predict(image_pil, texts=[prompt])
+        detections = predictor.predict(image_pil, texts=[prompt])
 
 
         if len(detections) > 0:
