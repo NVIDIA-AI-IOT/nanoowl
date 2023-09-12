@@ -1,8 +1,6 @@
-from io import BytesIO
-from urllib.request import urlopen
 from PIL import Image
 from PIL import ImageDraw, ImageFont
-import matplotlib.font_manager
+import math
 
 _FONTS = [
     "/usr/share/fonts/truetype/tlwg/Sawasdee.ttf",
@@ -21,8 +19,7 @@ def draw_detection(
         detection, 
         draw_bbox=True,
         draw_text=True, 
-        text_padding=(32, 8),
-        font_scale=0.15
+        font_scale=0.1
     ):
 
     draw = ImageDraw.Draw(image, "RGBA")
@@ -31,22 +28,28 @@ def draw_detection(
     x0, y0, x1, y1 = detection["bbox"]
 
     bbox_height = (y1 - y0)
+    bbox_width = (x1 - x0)
+    bbox_size = math.sqrt(bbox_height * bbox_width)
 
     if draw_bbox:
-        draw.rectangle(((x0, y0), (x1, y1)), fill=(118, 185, 0, 50))
-        draw.rectangle(((x0, y0), (x1, y1)), outline=(255, 255, 255, 255), width=2)
+        draw.rectangle(((x0, y0), (x1, y1)), fill=(118, 185, 0, 80))
+        draw.rectangle(((x0, y0), (x1, y1)), outline=(255, 255, 255, 255), width=3)
 
     if draw_text:
 
-        font_size = int(font_scale * bbox_height)
+        font_size = int(font_scale * bbox_size)
         x_text = int(x0 + 0.4 * font_size)
         y_text = int(y0 + 0.1 * font_size)
 
+        font_size = max(18, font_size)
+
         draw.text(
             (x_text, y_text), 
-            detection["text"], 
+            f'{detection["text"]}', 
             fill=(255, 255, 255, 255),
-            font=get_default_font(font_size)
+            font=get_default_font(font_size),
+            stroke_width=1,
+            stroke_fill=(255, 255, 255, 255)
         )
 
     return image
