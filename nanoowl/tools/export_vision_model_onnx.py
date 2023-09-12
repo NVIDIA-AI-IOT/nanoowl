@@ -7,6 +7,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=str, default="data/owlvit_vision_model.onnx")
+    parser.add_argument("--dynamic_axes", action="store_true")
     parser.parse_args()
     args = parser.parse_args()
 
@@ -18,10 +19,20 @@ if __name__ == "__main__":
 
     output = vision_model(data)
 
+    if args.dynamic_axes:
+        dynamic_axes = {
+            "image": {0: "batch"},
+            "last_hidden_state": {0: "batch"},
+            "pooled_output": {0: "batch"},
+        }
+    else:
+        dynamic_axes = {}
+
     torch.onnx.export(
         vision_model,
         data,
         args.output,
         input_names=["image"],
-        output_names=["last_hidden_state", "pooled_output"]
+        output_names=["last_hidden_state", "pooled_output"],
+        dynamic_axes=dynamic_axes
     )
