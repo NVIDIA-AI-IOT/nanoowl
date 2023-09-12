@@ -33,7 +33,7 @@ def draw_detection(
 
     if draw_bbox:
         # draw.rectangle(((x0, y0), (x1, y1)), fill=(118, 185, 0, 160))
-        draw.rectangle(((x0, y0), (x1, y1)), outline=(118, 185, 0, 255), width=8)
+        draw.rectangle(((x0, y0), (x1, y1)), outline=(118, 185, 0, 255), width=16)
 
     if draw_text:
 
