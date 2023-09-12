@@ -23,7 +23,9 @@ predictor = Predictor(
 
 image = PIL.Image.open("assets/dogs.jpg")
 
-detectors = predictor.predict(image, texts=["a dog"])
+detections = predictor.predict(image, texts=["a dog"])
+
+print(detections[0]['bbox'])
 ```
 
 <a id="performance"></a>
@@ -100,8 +102,7 @@ NanoOWL runs real-time on Jetson AGX Orin.
         --thresh=0.1
     ```
 
-That's it!  If everything is working properly, you should see a visualization saved
-to ``data/visualize_owlvit_out.jpg``.  
+That's it!  If everything is working properly, you should see a visualization saved to ``data/visualize_owlvit_out.jpg``.  
 
 <a id="examples"></a>
 ## 🤸 Examples
