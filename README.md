@@ -11,7 +11,8 @@ This means you can detect custom objects simply by providing text prompts (no tr
 is not well optimized for inference and runs ~1FPS out-of-the box (the pipeline
 relies heavily on the CPU by default).  By optimizing the pipeline to better utilize the GPU, and
 optimizing OWL-ViT's image encoder with NVIDIA TensorRT, NanoOWL achieves full pipeline 
-framerate of ~22FPS on NVIDIA Jetson AGX Orin.
+framerate of ~22FPS on NVIDIA Jetson AGX Orin.  This allows you to run open-vocabulary
+detection at near camera framerates at the edge, unlocking a variety new applications.
 
 > Interested in detecting object masks as well?  Try combining NanoOWL with
 > [NanoSAM](https://github.com/NVIDIA-AI-IOT/nanosam) for zero-shot open-vocabulary 
