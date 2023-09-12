@@ -17,8 +17,8 @@ import tqdm
 import torch
 import argparse
 from nanoowl.utils.predictor import load_image_encoder_engine
-from nanosam.models import create_model, list_models
-from nanosam.datasets.image_folder import ImageFolder
+from nanoowl.utils.image_folder import ImageFolder
+from nanoowl.models import create_model, list_models
 import os
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     image_encoder_trt = load_image_encoder_engine(args.teacher_image_encoder_engine)
 
-    image_encoder_cnn = create_model(args.model_name).cuda()
+    image_encoder_student = create_model(args.model_name).cuda()
 
     if args.loss == "huber":
         loss_function = F.huber_loss
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     else:
         raise RuntimeError(f"Unsupported loss function {args.loss}")
 
-    optimizer = torch.optim.Adam(image_encoder_cnn.parameters(), lr=3e-4)
+    optimizer = torch.optim.Adam(image_encoder_student.parameters(), lr=3e-4)
 
     dataset = ImageFolder(args.images)
 
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
-        image_encoder_cnn.load_state_dict(checkpoint['model'])
+        image_encoder_student.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         start_epoch = checkpoint['epoch'] + 1
     else:
@@ -86,16 +86,22 @@ if __name__ == "__main__":
 
         for image in tqdm.tqdm(iter(loader)):
             image = image.cuda()
+
             if len(image) != args.batch_size:
                 continue
-            image_cnn = F.interpolate(image, (args.student_size, args.student_size), mode="area")
+
+            if args.student_size != 768:
+                image_student = F.interpolate(image, (args.student_size, args.student_size), mode="bilinear")
+            else:
+                image_student = image
+
             with torch.no_grad():
-                features = image_encoder_trt(image)
+                target, _ = image_encoder_trt(image)
 
             optimizer.zero_grad()
-            output = image_encoder_cnn(image_cnn)
+            output, _ = image_encoder_student(image_student)
 
-            loss = loss_function(output, features)
+            loss = loss_function(output, target)
 
             loss.backward()
             optimizer.step()
@@ -108,14 +114,20 @@ if __name__ == "__main__":
             f.write(f"{epoch} - {epoch_loss}\n")
 
         torch.save({
-            "model": image_encoder_cnn.state_dict(),
+            "model": image_encoder_student.state_dict(),
             "optimizer": optimizer.state_dict(),
             "epoch": epoch}, checkpoint_path)
-            
+        
         plt.figure(figsize=(10, 10))
+
+        # plot by channel
         plt.subplot(121)
-        plt.imshow(features[0, 0].detach().cpu())
+        plt.plot(output[0, :, 0].detach().cpu())
+        plt.plot(target[0, :, 0].detach().cpu())
+
+        # plot by token id
         plt.subplot(122)
-        plt.imshow(output[0, 0].detach().cpu())
+        plt.plot(output[0, 0, :].detach().cpu())
+        plt.plot(target[0, 0, :].detach().cpu())
         plt.savefig(os.path.join(args.output_dir, f"epoch_{epoch}.png"))
         plt.close()
