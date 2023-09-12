@@ -9,6 +9,7 @@ from transformers import (
 from transformers.models.owlvit.modeling_owlvit import (
     OwlViTObjectDetectionOutput
 )
+import transformers.models.owlvit.image_processing_owlvit
 from torchvision.transforms import (
     ToTensor,
     Normalize,

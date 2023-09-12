@@ -10,7 +10,7 @@ from torchvision.transforms import (
 def build_owlvit_vision_transform(device, is_train: bool = False):
 
     if is_train:
-        resize = RandomResizedCrop((768, 768), scale=(0.08, 1.3))
+        resize = RandomResizedCrop((768, 768))
     else:
         resize = Resize((768, 768))
         
