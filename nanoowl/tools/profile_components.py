@@ -7,11 +7,11 @@ from typing import Optional
 from transformers.modeling_outputs import BaseModelOutputWithPooling
 import time
 from torch2trt import TRTModule
-from nanoowl.utils.owlvit import OwlVit
+from nanoowl.utils.predictor import Predictor
 from nanoowl.utils.module_recorder import ModuleRecorder
 from nanoowl.utils.tensorrt import load_image_encoder_engine
 
-owlvit = OwlVit(vision_engine="data/owlvit_vision_model.engine")
+owlvit = Predictor(vision_engine="data/owlvit_vision_model.engine")
 
 image = PIL.Image.open("assets/dogs.jpg")
 

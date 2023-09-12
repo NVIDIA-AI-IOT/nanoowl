@@ -1,6 +1,6 @@
 
-from nanoowl.utils.owlvit import OwlVit
+from nanoowl.utils.predictor import Predictor
 
-owlvit = OwlVit()
+owlvit = Predictor()
 
 print(owlvit.processor.image_processor)
