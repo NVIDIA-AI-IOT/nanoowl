@@ -36,7 +36,7 @@ if __name__ == "__main__":
     model = create_model(args.model_name)
     model.load_state_dict(torch.load(args.checkpoint)['model'])
 
-    wrapper = Wrapper(model)
+    wrapper = Wrapper(model, post_layernorm)
     wrapper = wrapper.cuda().eval()
 
     data = torch.randn(args.batch_size, 3, 768, 768).cuda()
