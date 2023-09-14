@@ -15,7 +15,7 @@ def load_owlvit_model(
     ):
     
     model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32", device_map=device)
-    
+
     # Overwrite with different vision encoder
     if vision_model_name is not None:
         assert vision_checkpoint is not None
@@ -31,5 +31,3 @@ def load_owlvit_model(
     
     return model
 
-
-def load_owlvit_model
