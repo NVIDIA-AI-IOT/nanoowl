@@ -8,7 +8,7 @@ image = PIL.Image.open("assets/owl_glove.jpg")
 text = ["an owl", "a glove"]
 
 predictor = Predictor(
-    # vision_engine="data/owlvit_vision_model.engine",
+    vision_engine="data/owlvit_vision_model.engine",
     threshold=0.1
 )
 
@@ -47,3 +47,15 @@ t1 = time.perf_counter_ns()
 dt = (t1 - t0) / 1e9
 
 print(f"VISION: {count/dt}")
+
+x = torch.randn(1, 3, 768, 768).cuda()
+
+torch.cuda.current_stream().synchronize()
+t0 = time.perf_counter_ns()
+for i in range(count):
+    output = predictor.model.owlvit.vision_model(pixel_values=x)
+    torch.cuda.current_stream().synchronize()
+t1 = time.perf_counter_ns()
+dt = (t1 - t0) / 1e9
+
+print(f"VISION RAW: {count/dt}")
