@@ -1,7 +1,7 @@
 import time
 import PIL.Image
 import torch
-from nanoowl.utils.predictor import Predictor
+from nanoowl.utils.predictor import Predictor, remap_device
 
 
 image = PIL.Image.open("assets/owl_glove.jpg")
@@ -21,7 +21,17 @@ for i in range(5):
 torch.cuda.current_stream().synchronize()
 t0 = time.perf_counter_ns()
 for i in range(count):
-    output = predictor.predict()
+    # predictor.set_image(image)
+    outputs = predictor._run_model()
+    # outputs = remap_device(outputs, "cpu")
+    # target_sizes = torch.Tensor([image.size[::-1]])
+    # results = predictor.processor.post_process_object_detection(outputs=outputs, target_sizes=target_sizes, threshold=predictor.threshold)
+    # i = 0
+    # boxes, scores, labels = results[i]["boxes"], results[i]["scores"], results[i]["labels"]
+    # detections = []
+    # for box, score, label in zip(boxes, scores, labels):
+    #     detection = {"bbox": box.tolist(), "score": float(score), "label": int(label), "text": text[label]}
+    #     detections.append(detection)
     torch.cuda.current_stream().synchronize()
 t1 = time.perf_counter_ns()
 dt = (t1 - t0) / 1e9
@@ -46,7 +56,27 @@ for i in range(count):
 t1 = time.perf_counter_ns()
 dt = (t1 - t0) / 1e9
 
-print(f"VISION: {count/dt}")
+print(f"PREDICT IMAGE: {count/dt}")
+
+torch.cuda.current_stream().synchronize()
+t0 = time.perf_counter_ns()
+for i in range(count):
+    output = predictor.set_image(image=image)
+    torch.cuda.current_stream().synchronize()
+t1 = time.perf_counter_ns()
+dt = (t1 - t0) / 1e9
+
+print(f"SET IMAGE: {count/dt}")
+
+torch.cuda.current_stream().synchronize()
+t0 = time.perf_counter_ns()
+for i in range(count):
+    box_preds = predictor.box_predictor(predictor._image_embeds, predictor._feature_map)
+    torch.cuda.current_stream().synchronize()
+t1 = time.perf_counter_ns()
+dt = (t1 - t0) / 1e9
+
+print(f"PRED BOXES: {count/dt}")
 
 x = torch.randn(1, 3, 768, 768).cuda()
 
