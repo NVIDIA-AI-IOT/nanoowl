@@ -4,4 +4,4 @@ FROM nvcr.io/nvidia/pytorch:23.01-py3
 RUN pip install pillow --upgrade 
 
 RUN pip install git+https://github.com/NVIDIA-AI-IOT/torch2trt.git
-RUN pip install transformers timm
+RUN pip install transformers timm accelerate
