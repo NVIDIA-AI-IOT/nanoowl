@@ -59,3 +59,14 @@ t1 = time.perf_counter_ns()
 dt = (t1 - t0) / 1e9
 
 print(f"VISION RAW: {count/dt}")
+
+
+torch.cuda.current_stream().synchronize()
+t0 = time.perf_counter_ns()
+for i in range(count):
+    output = predictor._transform(image)
+    torch.cuda.current_stream().synchronize()
+t1 = time.perf_counter_ns()
+dt = (t1 - t0) / 1e9
+
+print(f"TRANSFORM: {count/dt}")
