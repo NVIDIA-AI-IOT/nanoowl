@@ -3,7 +3,6 @@ from transformers import (
     OwlViTForObjectDetection
 )
 from nanoowl.utils.tensorrt import load_image_encoder_engine
-from nanoowl.utils.transform import build_owlvit_vision_transform
 from nanoowl.models import create_model
 
 
