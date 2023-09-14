@@ -2,27 +2,11 @@
 import PIL.Image
 import torch
 from transformers import (
-    OwlViTProcessor,
-    OwlViTForObjectDetection,
-    OwlViTVisionModel
+    OwlViTProcessor
 )
-from transformers.models.owlvit.modeling_owlvit import (
-    OwlViTObjectDetectionOutput
-)
-import transformers.models.owlvit.image_processing_owlvit
-from torchvision.transforms import (
-    ToTensor,
-    Normalize,
-    Resize,
-    Compose
-)
-from typing import Sequence, List, Tuple
-import torch.nn as nn
-import time
-import numpy as np
-from nanoowl.utils.tensorrt import load_image_encoder_engine
+from typing import Sequence
 from nanoowl.utils.transform import build_owlvit_vision_transform
-from nanoowl.models import create_model
+from nanoowl.utils.model import load_owlvit_model
 
 
 def remap_output(output, device):
@@ -44,27 +28,16 @@ class Predictor(object):
             vision_checkpoint=None,
             vision_model_name=None
         ):
+        self._transform = build_owlvit_vision_transform(device)
         self.processor = OwlViTProcessor.from_pretrained("google/owlvit-base-patch32", device_map=device)
-        self.model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32", device_map=device)
+        self.model = load_owlvit_model(
+            device,
+            vision_engine,
+            vision_checkpoint,
+            vision_model_name
+        )
         self.threshold = threshold
         self.device = device
-        self.times = {}
-
-        # use transform: huggingface preprocessing is very slow
-        self._transform = build_owlvit_vision_transform(device)
-
-        # Overwrite with different vision encoder
-        if vision_model_name is not None:
-            assert vision_checkpoint is not None
-            vision_model = create_model(vision_model_name)
-            vision_model.load_state_dict(torch.load(vision_checkpoint)['model'])
-            vision_model = vision_model.eval().to(device)
-            self.model.owlvit.vision_model = vision_model
-
-        # Overwrite with engine
-        if vision_engine is not None:
-            vision_model_trt = load_image_encoder_engine(vision_engine, self.model.owlvit.vision_model.post_layernorm)
-            self.model.owlvit.vision_model = vision_model_trt
 
     def predict(self, image: PIL.Image.Image, texts: Sequence[str]):
 
