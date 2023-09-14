@@ -204,8 +204,6 @@ class Predictor(object):
         input_ids = self._input_ids
         query_embeds = self._text_embeds
         feature_map = self._feature_map
-        text_outputs = self._text_outputs
-        vision_outputs = self._vision_outputs
         image_feats = self._image_embeds
 
         batch_size, num_patches, num_patches, hidden_dim = feature_map.shape
@@ -229,9 +227,7 @@ class Predictor(object):
             text_embeds=query_embeds,
             pred_boxes=pred_boxes,
             logits=pred_logits,
-            class_embeds=class_embeds,
-            text_model_output=text_outputs,
-            vision_model_output=vision_outputs,
+            class_embeds=class_embeds
         )
 
     @torch.no_grad()
