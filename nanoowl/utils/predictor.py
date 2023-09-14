@@ -84,7 +84,50 @@ class Predictor(object):
         self._text_embeds = None
         self._text_outputs = None
         self._text = None
+        self._box_bias = self._compute_box_bias(
+            num_patches=768//32, 
+            device=self.device
+        )
 
+    def _normalize_grid_corner_coordinates(self, num_patches, device):
+
+        box_coordinates = np.stack(
+            np.meshgrid(np.arange(1, num_patches + 1), np.arange(1, num_patches + 1)), axis=-1
+        ).astype(np.float32)
+        box_coordinates /= np.array([num_patches, num_patches], np.float32)
+
+        # Flatten (h, w, 2) -> (h*w, 2)
+        box_coordinates = box_coordinates.reshape(
+            box_coordinates.shape[0] * box_coordinates.shape[1], box_coordinates.shape[2]
+        )
+        box_coordinates = torch.from_numpy(box_coordinates).to(device)
+
+        return box_coordinates
+
+    def _compute_box_bias(self, num_patches, device):
+        box_coordinates = self._normalize_grid_corner_coordinates(num_patches, device)
+        box_coordinates = torch.clip(box_coordinates, 0.0, 1.0)
+
+        # Unnormalize xy
+        box_coord_bias = torch.log(box_coordinates + 1e-4) - torch.log1p(-box_coordinates + 1e-4)
+
+        # The box size is biased to the patch size
+        box_size = torch.full_like(box_coord_bias, 1.0 / num_patches)
+        box_size_bias = torch.log(box_size + 1e-4) - torch.log1p(-box_size + 1e-4)
+
+        # Compute box bias
+        box_bias = torch.cat([box_coord_bias, box_size_bias], dim=-1)
+        return box_bias
+
+    @torch.no_grad()
+    def box_predictor(self, image_feats, feature_map):
+        # use cached box bias
+        pred_boxes = self.model.box_head(image_feats)
+        pred_boxes += self._box_bias
+        pred_boxes = torch.sigmoid(pred_boxes)
+        return pred_boxes
+
+    @torch.no_grad()
     def embed_image(self, pixel_values):
         
         vision_outputs = self.model.owlvit.vision_model(pixel_values)
@@ -109,6 +152,7 @@ class Predictor(object):
 
         return image_embeds, feature_map, vision_outputs
 
+    @torch.no_grad()
     def embed_text(self, input_ids, attention_mask):
         
         text_outputs = self.model.owlvit.text_model(input_ids, attention_mask)
@@ -117,11 +161,14 @@ class Predictor(object):
 
         return text_embeds, text_outputs
 
+    @torch.no_grad()
     def embed_image_text(self, input_ids, pixel_values, attention_mask):
         text_embeds, text_outputs = self.embed_text(input_ids, attention_mask)
         vision_embeds, vision_outputs = self.embed_image(pixel_values)
         return text_embeds, text_outputs, vision_embeds, vision_outputs
     
+
+    @torch.no_grad()
     def set_image(self, image):
         pixel_values = self._transform(image)[None, ...].to(self.device)
         image_embeds, feature_map, vision_outputs = self.embed_image(pixel_values)
@@ -130,8 +177,9 @@ class Predictor(object):
         self._feature_map = feature_map
         self._vision_outputs = vision_outputs
         self._image = image
-        self._pred_boxes = self.model.box_predictor(self._image_embeds, self._feature_map)
+        self._pred_boxes = self.box_predictor(self._image_embeds, self._feature_map)
 
+    @torch.no_grad()
     def set_text(self, text):
 
         if isinstance(text, str):
@@ -150,6 +198,7 @@ class Predictor(object):
         self._text_outputs = text_outputs
         self._text = text
 
+    @torch.no_grad()
     def _run_model(self):
 
         input_ids = self._input_ids
@@ -185,6 +234,7 @@ class Predictor(object):
             vision_model_output=vision_outputs,
         )
 
+    @torch.no_grad()
     def predict(self, image: PIL.Image.Image=None, text: Sequence[str]=None):
 
         if isinstance(text, str):
