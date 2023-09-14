@@ -1,23 +1,30 @@
 
 from typing import Sequence
 
+import numpy as np
 import PIL.Image
 import torch
-from transformers import OwlViTForObjectDetection, OwlViTProcessor
+from transformers import (
+    OwlViTForObjectDetection, 
+    OwlViTProcessor
+)
+from transformers.models.owlvit.modeling_owlvit import (
+    OwlViTObjectDetectionOutput
+)
 
 from nanoowl.models import create_model
 from nanoowl.utils.tensorrt import load_image_encoder_engine
 from nanoowl.utils.transform import build_owlvit_vision_transform
 
 
-def remap_output(output, device):
+def remap_device(output, device):
     if isinstance(output, torch.Tensor):
         return output.to(device)
     else:
         res = output.__class__
         resdict = {}
         for k, v in output.items():
-            resdict[k] = remap_output(v,device)
+            resdict[k] = remap_device(v,device)
         return res(**resdict)
 
 
@@ -65,25 +72,139 @@ class Predictor(object):
         self.threshold = threshold
         self.device = device
 
-    def predict(self, image: PIL.Image.Image, texts: Sequence[str]):
+        # state
+        self._input_ids = None
+        self._image = None
+        self._pixel_values = None
+        self._attention_mask = None
+        self._image_embeds = None # flat
+        self._feature_map = None # spatial
+        self._vision_outputs = None
+        self._pred_boxes = None
+        self._text_embeds = None
+        self._text_outputs = None
+        self._text = None
 
-        # Preprocess text
-        inputs_text = self.processor(text=texts, return_tensors="pt")
+    def embed_image(self, pixel_values):
+        
+        vision_outputs = self.model.owlvit.vision_model(pixel_values)
 
-        # Preprocess image
-        inputs_images = {"pixel_values": self._transform(image)[None, ...]}
-        inputs = {}
-        inputs.update(inputs_text)
-        inputs.update(inputs_images)
+        last_hidden_state = vision_outputs[0]
+        image_embeds = self.model.owlvit.vision_model.post_layernorm(last_hidden_state)
 
-        # Ensure all devices on specified device
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        new_size = tuple(np.array(image_embeds.shape) - np.array((0, 1, 0)))
+        class_token_out = torch.broadcast_to(image_embeds[:, :1, :], new_size)
+
+        image_embeds = image_embeds[:, 1:, :] * class_token_out
+        image_embeds = self.model.layer_norm(image_embeds)
+
+        new_size = (
+            image_embeds.shape[0],
+            int(np.sqrt(image_embeds.shape[1])),
+            int(np.sqrt(image_embeds.shape[1])),
+            image_embeds.shape[-1],
+        )
+
+        feature_map = image_embeds.reshape(new_size)
+
+        return image_embeds, feature_map, vision_outputs
+
+    def embed_text(self, input_ids, attention_mask):
+        
+        text_outputs = self.model.owlvit.text_model(input_ids, attention_mask)
+        text_embeds = text_outputs[1]
+        text_embeds = self.model.owlvit.text_projection(text_embeds)
+
+        return text_embeds, text_outputs
+
+    def embed_image_text(self, input_ids, pixel_values, attention_mask):
+        text_embeds, text_outputs = self.embed_text(input_ids, attention_mask)
+        vision_embeds, vision_outputs = self.embed_image(pixel_values)
+        return text_embeds, text_outputs, vision_embeds, vision_outputs
+    
+    def set_image(self, image):
+        pixel_values = self._transform(image)[None, ...].to(self.device)
+        image_embeds, feature_map, vision_outputs = self.embed_image(pixel_values)
+        self._pixel_values = pixel_values
+        self._image_embeds = image_embeds
+        self._feature_map = feature_map
+        self._vision_outputs = vision_outputs
+        self._image = image
+        self._pred_boxes = self.model.box_predictor(self._image_embeds, self._feature_map)
+
+    def set_text(self, text):
+
+        if isinstance(text, str):
+            text = [text]
+
+        text_input = self.processor(text=text, return_tensors="pt")
+        input_ids = text_input['input_ids'].to(self.device)
+        attention_mask = text_input['attention_mask'].to(self.device)
+        text_embeds, text_outputs = self.embed_text(
+            input_ids=input_ids, 
+            attention_mask=attention_mask
+        )
+        self._input_ids = input_ids
+        self._attention_mask = attention_mask
+        self._text_embeds = text_embeds
+        self._text_outputs = text_outputs
+        self._text = text
+
+    def _run_model(self):
+
+        input_ids = self._input_ids
+        query_embeds = self._text_embeds
+        feature_map = self._feature_map
+        text_outputs = self._text_outputs
+        vision_outputs = self._vision_outputs
+        image_feats = self._image_embeds
+
+        batch_size, num_patches, num_patches, hidden_dim = feature_map.shape
+
+        # Reshape from [batch_size * max_text_queries, hidden_dim] -> [batch_size, max_text_queries, hidden_dim]
+        max_text_queries = input_ids.shape[0] // batch_size
+        query_embeds = query_embeds.reshape(batch_size, max_text_queries, query_embeds.shape[-1])
+
+        # If first token is 0, then this is a padded query [batch_size, num_queries].
+        input_ids = input_ids.reshape(batch_size, max_text_queries, input_ids.shape[-1])
+        query_mask = input_ids[..., 0] > 0
+
+        # Predict object classes [batch_size, num_patches, num_queries+1]
+        (pred_logits, class_embeds) = self.model.class_predictor(image_feats, query_embeds, query_mask)
+
+        # Predict object boxes
+        pred_boxes = self._pred_boxes
+
+        return OwlViTObjectDetectionOutput(
+            image_embeds=feature_map,
+            text_embeds=query_embeds,
+            pred_boxes=pred_boxes,
+            logits=pred_logits,
+            class_embeds=class_embeds,
+            text_model_output=text_outputs,
+            vision_model_output=vision_outputs,
+        )
+
+    def predict(self, image: PIL.Image.Image=None, text: Sequence[str]=None):
+
+        if isinstance(text, str):
+            text = [text]
+
+        if image is not None:
+            self.set_image(image)
+        else:
+            image = self._image
+        
+        if text is not None:
+            self.set_text(text)
+        else:
+            text = self._text
 
         # Run model
-        outputs = self.model(**inputs)
+        outputs = self._run_model()
 
         # Copy outputs to CPU (for postprocessing)
-        outputs = remap_output(outputs, "cpu")
+        outputs = remap_device(outputs, "cpu")
 
         # Postprocess output
         target_sizes = torch.Tensor([image.size[::-1]])
@@ -94,7 +215,7 @@ class Predictor(object):
         boxes, scores, labels = results[i]["boxes"], results[i]["scores"], results[i]["labels"]
         detections = []
         for box, score, label in zip(boxes, scores, labels):
-            detection = {"bbox": box.tolist(), "score": float(score), "label": int(label), "text": texts[label]}
+            detection = {"bbox": box.tolist(), "score": float(score), "label": int(label), "text": text[label]}
             detections.append(detection)
 
         return detections
