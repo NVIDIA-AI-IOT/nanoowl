@@ -12,7 +12,7 @@ predictor = Predictor(
 
 image = PIL.Image.open("assets/owl_glove.jpg")
 
-output = predictor.predict(image, texts=["an owl", "a glove", "a face"])
+output = predictor.predict_text(image, texts=["an owl", "a glove", "a face"])
 torch.cuda.current_stream().synchronize()
 
 recorders = {
@@ -30,7 +30,7 @@ for i in range(count):
     for k, r in recorders.items():
         r.attach()
 
-    output = predictor.predict(image, texts=["an owl", "a glove", "a face"])
+    output = predictor.predict_text(image, texts=["an owl", "a glove", "a face"])
 
     for k, r in recorders.items():
         r.detach()

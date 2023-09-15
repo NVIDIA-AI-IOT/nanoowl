@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
         image_pil = cv2_to_pil(image)
 
-        detections = predictor.predict(image_pil, texts=[prompt])
+        detections = predictor.predict_text(image_pil, texts=[prompt])
 
 
         if len(detections) > 0:

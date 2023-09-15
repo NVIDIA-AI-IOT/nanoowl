@@ -9,9 +9,10 @@ from transformers import (
     OwlViTProcessor
 )
 from transformers.models.owlvit.modeling_owlvit import (
-    OwlViTObjectDetectionOutput
+    OwlViTObjectDetectionOutput,
+    OwlViTImageGuidedObjectDetectionOutput
 )
-
+import transformers.models.owlvit.image_processing_owlvit
 from nanoowl.models import create_model
 from nanoowl.utils.tensorrt import load_image_encoder_engine
 from nanoowl.utils.transform import build_owlvit_vision_transform
@@ -59,7 +60,8 @@ class Predictor(object):
             device="cuda", 
             vision_engine=None,
             vision_checkpoint=None,
-            vision_model_name=None
+            vision_model_name=None,
+            query_image_nms_threshold=0.3
         ):
         self._transform = build_owlvit_vision_transform(device)
         self.processor = OwlViTProcessor.from_pretrained("google/owlvit-base-patch32", device_map=device)
@@ -71,6 +73,7 @@ class Predictor(object):
         )
         self.threshold = threshold
         self.device = device
+        self.query_image_nms_threshold = query_image_nms_threshold
 
         # state
         self._input_ids = None
@@ -199,7 +202,71 @@ class Predictor(object):
         self._text = text
 
     @torch.no_grad()
-    def _run_model(self):
+    def set_query_image(self, query_image):
+        pixel_values = self._transform(query_image)[None, ...].to(self.device)
+        image_embeds, feature_map, vision_outputs = self.embed_image(pixel_values)
+        query_embeds, best_box_indices, query_pred_boxes = self.model.embed_image_query(
+            image_embeds, feature_map
+        )
+        self._query_embeds = query_embeds
+        self._query_pred_boxes = query_pred_boxes
+        self._query_feature_map = feature_map
+        self._query_image = query_image
+        self._query_pixel_values = pixel_values
+        
+    @torch.no_grad()
+    def _process_query_image(self):
+        
+        (pred_logits, class_embeds) = self.model.class_predictor(
+            self._image_embeds, self._query_embeds
+        )
+
+        return OwlViTImageGuidedObjectDetectionOutput(
+            image_embeds=self._feature_map,
+            query_image_embeds=self._query_feature_map,
+            target_pred_boxes=self._pred_boxes,
+            query_pred_boxes=self._query_pred_boxes,
+            logits=pred_logits,
+            class_embeds=class_embeds
+        )
+    
+    @torch.no_grad()
+    def predict_query_image(self, image: PIL.Image.Image=None, query_image: PIL.Image.Image = None):
+
+        if image is not None:
+            self.set_image(image)
+        else:
+            image = self._image
+        
+        if query_image is not None:
+            self.set_query_image(query_image)
+
+        # Run model
+        outputs = self._process_query_image()
+
+        # Copy outputs to CPU (for postprocessing)
+        outputs = remap_device(outputs, "cpu")
+
+        # Postprocess output
+        target_sizes = torch.Tensor([image.size[::-1]])
+        results = self.processor.post_process_image_guided_detection(
+            outputs=outputs, 
+            target_sizes=target_sizes, 
+            threshold=self.threshold,
+            nms_threshold=self.query_image_nms_threshold
+        )
+        # Format output
+        i = 0
+        boxes, scores = results[i]["boxes"], results[i]["scores"]
+        detections = []
+        for box, score in zip(boxes, scores):
+            detection = {"bbox": box.tolist(), "score": float(score)}
+            detections.append(detection)
+
+        return detections
+
+    @torch.no_grad()
+    def _process_text(self):
 
         input_ids = self._input_ids
         query_embeds = self._text_embeds
@@ -231,7 +298,7 @@ class Predictor(object):
         )
 
     @torch.no_grad()
-    def predict(self, image: PIL.Image.Image=None, text: Sequence[str]=None):
+    def predict_text(self, image: PIL.Image.Image=None, text: Sequence[str]=None):
 
         if isinstance(text, str):
             text = [text]
@@ -247,7 +314,7 @@ class Predictor(object):
             text = self._text
 
         # Run model
-        outputs = self._run_model()
+        outputs = self._process_text()
 
         # Copy outputs to CPU (for postprocessing)
         outputs = remap_device(outputs, "cpu")

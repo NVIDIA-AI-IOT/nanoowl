@@ -15,14 +15,14 @@ predictor = Predictor(
 count = 50
 predictor.set_image(image)
 for i in range(5):
-    output = predictor.predict(image=image, text=text)
+    output = predictor.predict_text(image=image, text=text)
 
 
 torch.cuda.current_stream().synchronize()
 t0 = time.perf_counter_ns()
 for i in range(count):
     # predictor.set_image(image)
-    outputs = predictor._run_model()
+    outputs = predictor._process_text()
     # outputs = remap_device(outputs, "cpu")
     # target_sizes = torch.Tensor([image.size[::-1]])
     # results = predictor.processor.post_process_object_detection(outputs=outputs, target_sizes=target_sizes, threshold=predictor.threshold)
@@ -41,7 +41,7 @@ print(f"RUN MODEL: {count/dt}")
 torch.cuda.current_stream().synchronize()
 t0 = time.perf_counter_ns()
 for i in range(count):
-    output = predictor.predict(text=text)
+    output = predictor.predict_text(text=text)
     torch.cuda.current_stream().synchronize()
 t1 = time.perf_counter_ns()
 dt = (t1 - t0) / 1e9
@@ -51,7 +51,7 @@ print(f"TEXT: {count/dt}")
 torch.cuda.current_stream().synchronize()
 t0 = time.perf_counter_ns()
 for i in range(count):
-    output = predictor.predict(image=image)
+    output = predictor.predict_text(image=image)
     torch.cuda.current_stream().synchronize()
 t1 = time.perf_counter_ns()
 dt = (t1 - t0) / 1e9
