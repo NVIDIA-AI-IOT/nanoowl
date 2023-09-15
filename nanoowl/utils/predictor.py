@@ -342,3 +342,8 @@ class Predictor(object):
             detections.append(detection)
 
         return detections
+    
+
+    @torch.no_grad()
+    def predict(self, image: PIL.Image.Image=None, text: Sequence[str]=None):
+        return self.predict_text(image, text)
