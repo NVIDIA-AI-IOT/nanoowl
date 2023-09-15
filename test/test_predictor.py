@@ -10,6 +10,7 @@ def test_predictor_encoder_image():
 
     predictor = Predictor(
         threshold=0.1, 
+        patch_size=32
     )
 
     image = PIL.Image.open("assets/owl_glove.jpg")
