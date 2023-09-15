@@ -24,7 +24,7 @@ def test_predictor_encoder_image():
 def test_predictor_pre_set_text():
 
     predictor = Predictor(
-        threshold=0.1, 
+        threshold=0.1
     )
 
     image = PIL.Image.open("assets/owl_glove.jpg")
