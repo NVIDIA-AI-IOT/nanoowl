@@ -58,17 +58,29 @@ def test_predictor_pre_set_image():
 
 
 def test_predictor_query_image():
+    import requests
+    import numpy as np
 
+    image_url = "http://images.cocodataset.org/val2017/000000039769.jpg"
+    query_image_url = "http://images.cocodataset.org/val2017/000000001675.jpg"
+    image = PIL.Image.open(requests.get(image_url, stream=True).raw)
+    query_image = PIL.Image.open(requests.get(query_image_url, stream=True).raw)
 
-    image = PIL.Image.open("assets/owl_glove.jpg")
+    # image = PIL.Image.open("assets/owl_glove.jpg")
 
-    query_image = image.crop([1000, 300, 2000, 1600])
+    # query_image = PIL.Image.fromarray(np.zeros_like(np.asarray(image)))
 
-    query_image.save("data/query_image.jpg")
+    # box = [1000, 300, 2000, 1600]
+    # query_image_crop = image.crop([1000, 300, 2000, 1600])
+    # query_image.paste(query_image_crop, box)
+
+    # image = image.resize((640, 480))
+    # query_image = query_image.resize((640, 480))
 
     predictor = Predictor(
         threshold=0.6, 
-        query_image_nms_threshold=0.3
+        query_image_nms_threshold=0.3,
+        patch_size=16
     )
 
     detections = predictor.predict_query_image(image, query_image)

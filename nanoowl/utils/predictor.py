@@ -33,10 +33,11 @@ def load_owlvit_model(
         device="cuda", 
         vision_engine=None,
         vision_checkpoint=None,
-        vision_model_name=None
+        vision_model_name=None,
+        pretrained_name="google/owlvit-base-patch32"
     ):
     
-    model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32", device_map=device)
+    model = OwlViTForObjectDetection.from_pretrained(pretrained_name, device_map=device)
 
     # Overwrite with different vision encoder
     if vision_model_name is not None:
@@ -61,19 +62,28 @@ class Predictor(object):
             vision_engine=None,
             vision_checkpoint=None,
             vision_model_name=None,
-            query_image_nms_threshold=0.3
+            query_image_nms_threshold=0.3,
+            patch_size: int = 32
         ):
+        if patch_size == 16:
+            pretrained_name = "google/owlvit-base-patch16"
+        elif patch_size == 32:
+            pretrained_name = "google/owlvit-base-patch32"
+
         self._transform = build_owlvit_vision_transform(device)
-        self.processor = OwlViTProcessor.from_pretrained("google/owlvit-base-patch32", device_map=device)
+        self.processor = OwlViTProcessor.from_pretrained(pretrained_name, device_map=device)
         self.model = load_owlvit_model(
             device,
             vision_engine,
             vision_checkpoint,
-            vision_model_name
+            vision_model_name,
+            pretrained_name=pretrained_name
         )
         self.threshold = threshold
         self.device = device
         self.query_image_nms_threshold = query_image_nms_threshold
+        self.patch_size = patch_size
+        self.pretrained_name = pretrained_name
 
         # state
         self._input_ids = None
@@ -88,7 +98,7 @@ class Predictor(object):
         self._text_outputs = None
         self._text = None
         self._box_bias = self._compute_box_bias(
-            num_patches=768//32, 
+            num_patches=768//patch_size, 
             device=self.device
         )
 
