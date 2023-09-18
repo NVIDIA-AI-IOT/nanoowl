@@ -12,8 +12,8 @@ if __name__ == "__main__":
     parser.add_argument("--patch_size", type=int, default=32)
     args = parser.parse_args()
 
-    image = PIL.Image.open("assets/owl_glove.jpg")
-    text = ["an owl", "a glove"]
+    image = PIL.Image.open("assets/camera.jpg")
+    text = ["an chair", "a glove"]
 
     predictor = Predictor(
         vision_engine=args.vision_engine,

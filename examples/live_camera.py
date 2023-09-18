@@ -21,6 +21,7 @@ if __name__ == "__main__":
 
     predictor = Predictor(threshold=args.thresh, vision_engine="data/owlvit_vision_model.engine")
 
+    predictor.set_text(args.prompt)
     def cv2_to_pil(image):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         return PIL.Image.fromarray(image)
@@ -33,10 +34,6 @@ if __name__ == "__main__":
 
     while True:
         
-        if os.path.exists("prompt.txt"):
-            with open("prompt.txt", 'r') as f:
-                prompt = f.read().strip()
-            
         re, image = cap.read()
 
 
@@ -45,7 +42,7 @@ if __name__ == "__main__":
 
         image_pil = cv2_to_pil(image)
 
-        detections = predictor.predict_text(image_pil, texts=[prompt])
+        detections = predictor.predict_text(image=image_pil)
 
 
         if len(detections) > 0:
