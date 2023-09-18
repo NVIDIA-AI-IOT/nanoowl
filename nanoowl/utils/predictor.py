@@ -63,12 +63,27 @@ class Predictor(object):
             vision_checkpoint=None,
             vision_model_name=None,
             query_image_nms_threshold=0.3,
-            patch_size: int = 32
+            pretrained_name="google/owlvit-base-patch32"
         ):
-        if patch_size == 16:
-            pretrained_name = "google/owlvit-base-patch16"
-        elif patch_size == 32:
-            pretrained_name = "google/owlvit-base-patch32"
+
+        patch_sizes = {
+            "google/owlvit-base-patch32": 32,
+            "google/owlvit-base-patch16": 16,
+            "google/owlvit-large-patch14": 14,
+        }
+
+        image_sizes = {
+            "google/owlvit-base-patch32": 768,
+            "google/owlvit-base-patch16": 768,
+            "google/owlvit-large-patch14": 840,
+        }
+        # google/owlvit-base-patch32
+        # google/owlvit-base-patch16
+        # google/owlvit-large-patch14
+        patch_size = patch_sizes[pretrained_name]
+        image_size = image_sizes[pretrained_name]
+        self.image_size = image_size
+        self.patch_size = patch_size
 
         self._transform = build_owlvit_vision_transform(device)
         self.processor = OwlViTProcessor.from_pretrained(pretrained_name, device_map=device)
@@ -98,7 +113,7 @@ class Predictor(object):
         self._text_outputs = None
         self._text = None
         self._box_bias = self._compute_box_bias(
-            num_patches=768//patch_size, 
+            num_patches=image_size//patch_size, 
             device=self.device
         )
 

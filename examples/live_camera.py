@@ -19,7 +19,9 @@ if __name__ == "__main__":
 
     prompt = args.prompt
 
-    predictor = Predictor(threshold=args.thresh, vision_engine="data/owlvit_vision_model.engine")
+    predictor = Predictor(threshold=args.thresh, 
+    vision_engine="data/owlvit_vision_model_b16.engine",
+    pretrained_name="google/owlvit-base-patch16")
 
     predictor.set_text(args.prompt)
     def cv2_to_pil(image):
