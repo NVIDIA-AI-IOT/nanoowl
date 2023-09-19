@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     image = PIL.Image.open(args.image)
 
-    detections = predictor.predict_text(image, texts=args.prompt)
+    detections = predictor.predict_text(image, text=args.prompt)
 
     for detection in detections:
         draw_detection(image, detection)
