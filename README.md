@@ -33,23 +33,35 @@ print(detections[0]['bbox'])
 <a id="performance"></a>
 ## ⏱️ Performance
 
-NanoOWL runs real-time on Jetson AGX Orin.
+NanoOWL runs real-time on Jetson Orin Nano.
 
 <table style="border-top: solid 1px; border-left: solid 1px; border-right: solid 1px; border-bottom: solid 1px">
     <thead>
         <tr>
             <th rowspan=1 style="text-align: center; border-right: solid 1px">Model †</th>
-            <th colspan=1 style="text-align: center; border-right: solid 1px">⏱️ Jetson AGX Orin (ms)</th>
+            <th colspan=1 style="text-align: center; border-right: solid 1px">Image Size</th>
+            <th colspan=1 style="text-align: center; border-right: solid 1px">Patch Size</th>
+            <th colspan=1 style="text-align: center; border-right: solid 1px">⏱️ Jetson Orin Nano (FPS)</th>
+            <th colspan=1 style="text-align: center; border-right: solid 1px">⏱️ Jetson AGX Orin (FPS)</th>
+            <th colspan=1 style="text-align: center; border-right: solid 1px">🎯 Accuracy (mAP)</th>
         </tr>
     </thead>
     <tbody>
         <tr>
-            <td style="text-align: center; border-right: solid 1px">OWL-ViT (transformers default, CPU)</td>
-            <td style="text-align: center; border-right: solid 1px">950</td>
+            <td style="text-align: center; border-right: solid 1px">OWL-ViT (ViT-B/32)</td>
+            <td style="text-align: center; border-right: solid 1px">1024</td>
+            <td style="text-align: center; border-right: solid 1px">32</td>
+            <td style="text-align: center; border-right: solid 1px">TBD</td>
+            <td style="text-align: center; border-right: solid 1px">95</td>
+            <td style="text-align: center; border-right: solid 1px">28</td>
         </tr>
         <tr>
-            <td style="text-align: center; border-right: solid 1px">NanoOWL (OWL-ViT GPU+TRT optimized)</td>
-            <td style="text-align: center; border-right: solid 1px">45</td>
+            <td style="text-align: center; border-right: solid 1px">OWL-ViT (ViT-B/16)</td>
+            <td style="text-align: center; border-right: solid 1px">1024</td>
+            <td style="text-align: center; border-right: solid 1px">32</td>
+            <td style="text-align: center; border-right: solid 1px">TBD</td>
+            <td style="text-align: center; border-right: solid 1px">25</td>
+            <td style="text-align: center; border-right: solid 1px">31.7</td>
         </tr>
     </tbody>
 </table>
