@@ -58,7 +58,7 @@ NanoOWL runs real-time on Jetson Orin Nano.
         <tr>
             <td style="text-align: center; border-right: solid 1px">OWL-ViT (ViT-B/16)</td>
             <td style="text-align: center; border-right: solid 1px">1024</td>
-            <td style="text-align: center; border-right: solid 1px">32</td>
+            <td style="text-align: center; border-right: solid 1px">16</td>
             <td style="text-align: center; border-right: solid 1px">TBD</td>
             <td style="text-align: center; border-right: solid 1px">25</td>
             <td style="text-align: center; border-right: solid 1px">31.7</td>
