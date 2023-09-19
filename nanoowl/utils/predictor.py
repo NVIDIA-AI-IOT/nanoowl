@@ -163,8 +163,9 @@ class Predictor(object):
         last_hidden_state = vision_outputs[0]
         image_embeds = self.model.owlvit.vision_model.post_layernorm(last_hidden_state)
 
-        new_size = tuple(np.array(image_embeds.shape) - np.array((0, 1, 0)))
-        class_token_out = torch.broadcast_to(image_embeds[:, :1, :], new_size)
+        # new_size = tuple(np.array(image_embeds.shape) - np.array((0, 1, 0)))
+        # class_token_out = torch.broadcast_to(image_embeds[:, :1, :], new_size)
+        class_token_out = image_embeds[:, :1, :]
 
         image_embeds = image_embeds[:, 1:, :] * class_token_out
         image_embeds = self.model.layer_norm(image_embeds)
