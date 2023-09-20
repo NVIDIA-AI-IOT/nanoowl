@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
+import os
 from dataclasses import dataclass
 from transformers.models.owlvit.modeling_owlvit import (
     OwlViTForObjectDetection
@@ -10,6 +11,53 @@ from transformers.models.owlvit.processing_owlvit import (
     OwlViTProcessor
 )
 
+HF_DEFAULT = "google/owlvit-base-patch32"
+
+
+def hf_get_patch_size(hf_name: str):
+
+    patch_sizes = {
+        "google/owlvit-base-patch32": 32,
+        "google/owlvit-base-patch16": 16,
+        "google/owlvit-large-patch14": 14,
+    }
+
+    return patch_sizes[hf_name]
+
+
+def hf_get_image_size(hf_name: str):
+
+    image_sizes = {
+        "google/owlvit-base-patch32": 768,
+        "google/owlvit-base-patch16": 768,
+        "google/owlvit-large-patch14": 840,
+    }
+
+    return image_sizes[hf_name]
+
+
+def hf_build_model(hf_name):
+    model = OwlViTForObjectDetection.from_pretrained(
+        hf_name
+    )
+    return model
+
+
+def hf_build_processor(hf_name):
+    processor = OwlViTProcessor.from_pretrained(
+        hf_name
+    )
+    return processor
+
+
+def center_to_corners_format_torch(bboxes_center):
+    center_x, center_y, width, height = bboxes_center.unbind(-1)
+    bbox_corners = torch.stack(
+        # top left x, top left y, bottom right x, bottom right y
+        [(center_x - 0.5 * width), (center_y - 0.5 * height), (center_x + 0.5 * width), (center_y + 0.5 * height)],
+        dim=-1,
+    )
+    return bbox_corners
 
 
 class OwlVitImageFormatter(object):
@@ -22,7 +70,7 @@ class OwlVitImageFormatter(object):
         pixel_values = pixel_values.permute(0, 3, 1, 2)
         pixel_values = pixel_values.to(self.device).float()
         return pixel_values
-
+    
 
 class OwlVitTextTokenizer(object):
     def __init__(self, hf_preprocessor, device: str = "cuda"):
@@ -34,7 +82,7 @@ class OwlVitTextTokenizer(object):
         input_ids = text_input['input_ids'].to(self.device)
         attention_mask = text_input['attention_mask'].to(self.device)
         return input_ids, attention_mask
-
+    
 
 class OwlVitImagePreprocessorModule(nn.Module):
     def __init__(self, image_size=768):
@@ -52,35 +100,33 @@ class OwlVitImagePreprocessorModule(nn.Module):
         pixel_values.sub_(self.mean).div_(self.std)
         return pixel_values
     
-# class OwlVitImagePreprocessor(object):
+    def export_onnx(self, path: str):
 
-#     def 
-#     def export_onnx(self, path: str):
+        model = self.eval().to("cpu")
 
-#         model = self.eval().to("cpu")
+        data = torch.randn(1, 3, self.image_size, self.image_size).to("cpu")
 
-#         data = torch.randn(1, 3, self.image_size, self.image_size).to("cpu")
+        dynamic_axes = {
+            "image": {0: "batch", 2: "height", 3: "width"},
+            "image_preprocessed": {0: "batch"}
+        }
 
-#         dynamic_axes = {
-#             "image": {0: "batch", 2: "height", 3: "width"},
-#             "image_preprocessed": {0: "batch"}
-#         }
-
-#         torch.onnx.export(
-#             model, 
-#             data, 
-#             path, 
-#             input_names=["image"], 
-#             output_names=["image_preprocessed"],
-#             dynamic_axes=dynamic_axes
-#         )
+        torch.onnx.export(
+            model, 
+            data, 
+            path, 
+            input_names=["image"], 
+            output_names=["image_preprocessed"],
+            dynamic_axes=dynamic_axes
+        )
 
 
 class OwlVitImageEncoderModule(nn.Module):
-    def __init__(self, vision_model, layer_norm):
+    def __init__(self, vision_model, layer_norm, image_size):
         super().__init__()
         self.vision_model = vision_model
         self.layer_norm = layer_norm
+        self.image_size = image_size
 
     def forward(self, pixel_values):
         vision_outputs = self.vision_model(pixel_values)
@@ -96,6 +142,26 @@ class OwlVitImageEncoderModule(nn.Module):
         image_embeds = self.layer_norm(image_embeds)
 
         return image_embeds
+    
+    def export_onnx(self, path: str):
+
+        model = self.eval().to("cpu")
+
+        data = torch.randn(1, 3, self.image_size, self.image_size).to("cpu")
+
+        dynamic_axes = {
+            "image": {0: "batch"},
+            "image_embeds": {0: "batch"}
+        }
+
+        torch.onnx.export(
+            model, 
+            data, 
+            path, 
+            input_names=["image_preprocessed"], 
+            output_names=["image_embeds"],
+            dynamic_axes=dynamic_axes
+        )
 
 
 class OwlVitTextEncoderModule(nn.Module):
@@ -171,16 +237,6 @@ class OwlVitClassPredictorModule(nn.Module):
         )
 
         return pred_logits, class_embeds
-    
-
-def center_to_corners_format_torch(bboxes_center):
-    center_x, center_y, width, height = bboxes_center.unbind(-1)
-    bbox_corners = torch.stack(
-        # top left x, top left y, bottom right x, bottom right y
-        [(center_x - 0.5 * width), (center_y - 0.5 * height), (center_x + 0.5 * width), (center_y + 0.5 * height)],
-        dim=-1,
-    )
-    return bbox_corners
 
 
 class OwlVitDetectionPostprocessor(object):
@@ -210,98 +266,6 @@ class OwlVitDetectionPostprocessor(object):
 
         return results
 
-def get_patch_size(pretrained_name: str):
-
-    patch_sizes = {
-        "google/owlvit-base-patch32": 32,
-        "google/owlvit-base-patch16": 16,
-        "google/owlvit-large-patch14": 14,
-    }
-
-    return patch_sizes[pretrained_name]
-
-
-def get_image_size(pretrained_name: str):
-
-    image_sizes = {
-        "google/owlvit-base-patch32": 768,
-        "google/owlvit-base-patch16": 768,
-        "google/owlvit-large-patch14": 840,
-    }
-
-    return image_sizes[pretrained_name]
-
-
-class OwlVitBuilder(object):
-
-    def __init__(self,
-            pretrained_name: str = "google/owlvit-base-patch32",
-        ):
-        self.pretrained_name = pretrained_name
-        self.image_size = get_image_size(pretrained_name)
-        self.patch_size = get_patch_size(pretrained_name)
-
-    def build_hf_model(self):
-        model = OwlViTForObjectDetection.from_pretrained(
-            self.pretrained_name
-        )
-        return model
-
-    def build_hf_processor(self):
-        processor = OwlViTProcessor.from_pretrained(
-            self.pretrained_name
-        )
-        return processor
-    
-    def build_image_encoder_module(self, hf_model=None):
-        if hf_model is None:
-            hf_model = self.build_hf_model()
-        return OwlVitImageEncoderModule(hf_model.owlvit.vision_model, hf_model.layer_norm)
-
-    def build_text_encoder_module(self, hf_model=None):
-        if hf_model is None:
-            hf_model = self.build_hf_model()
-        return OwlVitTextEncoderModule(hf_model.owlvit.text_model, hf_model.owlvit.text_projection)
-
-    def build_box_predictor_module(self, hf_model=None):
-        if hf_model is None:
-            hf_model = self.build_hf_model()
-        return OwlVitBoxPredictorModule(
-            hf_model.box_head,
-            num_patches=self.image_size // self.patch_size
-        )
-
-    def build_class_predictor_module(self, hf_model=None):
-        if hf_model is None:
-            hf_model = self.build_hf_model()
-        return OwlVitClassPredictorModule(hf_model.class_head)
-
-    def build_image_preprocessor_module(self):
-        return OwlVitImagePreprocessorModule(self.image_size)
-    
-    def build_image_formatter(self, device: str = "cuda"):
-        return OwlVitImageFormatter(device)
-    
-    def build_text_tokenizer(self, hf_processor=None, device: str = "cuda"):
-        if hf_processor is None:
-            hf_processor = self.build_hf_processor()
-        return OwlVitTextTokenizer(hf_processor, device)
-    
-    def build_torch_predictor(self, device: str = "cuda"):
-        hf_model = self.build_hf_model()
-        hf_processor = self.build_hf_processor()
-        predictor = OwlVitPredictor(
-            image_encoder=self.build_image_encoder_module(hf_model).eval().to(device),
-            text_encoder=self.build_text_encoder_module(hf_model).eval().to(device),
-            box_predictor=self.build_box_predictor_module(hf_model).eval().to(device),
-            class_predictor=self.build_class_predictor_module(hf_model).eval().to(device),
-            image_preprocessor=self.build_image_preprocessor_module().eval().to(device),
-            image_formatter=self.build_image_formatter(device),
-            text_tokenizer=self.build_text_tokenizer(hf_processor, device),
-            detection_postprocessor=OwlVitDetectionPostprocessor()
-        )
-        return predictor
-
 
 class OwlVitPredictor(object):
     def __init__(self,
@@ -324,10 +288,32 @@ class OwlVitPredictor(object):
         self.text_tokenizer = text_tokenizer
         self.detection_postprocessor = detection_postprocessor
 
+
     @staticmethod
-    def from_pretrained(name: str):
-        builder = OwlVitBuilder(name)
-        return builder.build_torch_predictor()
+    def from_hf_pretrained(name: str, device: str = "cuda"):
+
+        hf_model = hf_build_model(name)
+        hf_processor = hf_build_processor(name)
+        image_size = hf_get_image_size(name)
+        patch_size = hf_get_patch_size(name)
+
+        return OwlVitPredictor(
+            image_encoder=OwlVitImageEncoderModule(
+                    hf_model.owlvit.vision_model, hf_model.layer_norm, image_size
+                ).eval().to(device),
+            text_encoder=OwlVitTextEncoderModule(
+                    hf_model.owlvit.text_model, hf_model.owlvit.text_projection
+                ).eval().to(device),
+            box_predictor=OwlVitBoxPredictorModule(
+                    hf_model.box_head,
+                    num_patches=image_size // patch_size
+                ).eval().to(device),
+            class_predictor=OwlVitClassPredictorModule(hf_model.class_head).eval().to(device),
+            image_preprocessor=OwlVitImagePreprocessorModule(image_size).eval().to(device),
+            image_formatter=OwlVitImageFormatter(device),
+            text_tokenizer=OwlVitTextTokenizer(hf_processor, device),
+            detection_postprocessor=OwlVitDetectionPostprocessor()
+        )
     
     def predict(self, image=None, text=None, threshold=0.1):
         #TODO: support multi-batch inference
@@ -340,8 +326,8 @@ class OwlVitPredictor(object):
 
         # Encode Image
         image = self.image_formatter(image)
-        image_resized = self.image_preprocessor(image)
-        image_embeds = self.image_encoder(image_resized)
+        image_preprocessed = self.image_preprocessor(image)
+        image_embeds = self.image_encoder(image_preprocessed)
 
         # Predict boxes
         pred_boxes = self.box_predictor(image_embeds)
@@ -360,3 +346,4 @@ class OwlVitPredictor(object):
         )
 
         return detections
+    

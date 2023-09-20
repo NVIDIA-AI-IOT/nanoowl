@@ -1,12 +1,16 @@
 import pytest
 import PIL.Image
-from nanoowl.model import OwlVitPredictor
+from nanoowl.model import (
+    OwlVitPredictor,
+    OwlVitImagePreprocessorModule,
+    OwlVitImageEncoderModule
+)
 from nanoowl.utils.drawing import draw_detections_raw
 
 
 def test_owlvit_predictor_cuda():
 
-    predictor = OwlVitPredictor.from_pretrained("google/owlvit-base-patch32")
+    predictor = OwlVitPredictor.from_hf_pretrained("google/owlvit-base-patch32")
 
     image = PIL.Image.open("assets/owl_glove.jpg")
 
@@ -18,3 +22,4 @@ def test_owlvit_predictor_cuda():
     #     draw_detection(image, detection)
 
     image.save("data/test_owlvit_predictor_cuda.jpg")
+
