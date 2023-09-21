@@ -3,6 +3,8 @@ import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 import os
+import statistics
+import functools
 from dataclasses import dataclass
 from transformers.models.owlvit.modeling_owlvit import (
     OwlViTForObjectDetection
@@ -10,6 +12,8 @@ from transformers.models.owlvit.modeling_owlvit import (
 from transformers.models.owlvit.processing_owlvit import (
     OwlViTProcessor
 )
+import time
+from collections import OrderedDict
 
 HF_DEFAULT = "google/owlvit-base-patch32"
 
@@ -60,11 +64,105 @@ def center_to_corners_format_torch(bboxes_center):
     return bbox_corners
 
 
+class Profiler:
+
+    active_profilers = set()
+
+    def __init__(self):
+        self.stack = []
+        self.elapsed_times = OrderedDict()
+
+    def __enter__(self, *args, **kwargs):
+        Profiler.active_profilers.add(self)
+
+    def __exit__(self, *args, **kwargs):
+        Profiler.active_profilers.remove(self)
+
+    def current_namespace(self):
+        return ".".join(self.stack)
+
+    def add_elapsed_time(self, timing_ms):
+        namespace = self.current_namespace()
+        if namespace not in self.elapsed_times:
+            self.elapsed_times[namespace] = [timing_ms]
+        else:
+            self.elapsed_times[namespace].append(timing_ms)
+
+    def mean_elapsed_times(self):
+        times = OrderedDict()
+        for k, v in self.elapsed_times.items():
+            times[k] = statistics.mean(v)
+        return times
+
+    def median_elapsed_times(self):
+        times = OrderedDict()
+        for k, v in self.elapsed_times.items():
+            times[k] = statistics.median(v)
+        return times
+
+    def print_mean_elapsed_times_ms(self):
+        for k, v in self.mean_elapsed_times().items():
+            print(f"{k}: {round(v, 3) / 1e6}")
+
+    def print_median_elapsed_times_ms(self):
+        for k, v in self.median_elapsed_times().items():
+            print(f"{k}: {round(v, 3) / 1e6}")
+
+    def clear(self):
+        self.elapsed_times = OrderedDict()
+
+
+class Timer:
+    
+    def __init__(self, scope: str):
+        self.scope = scope
+        self._t0 = None
+        self._t1 = None
+
+    def is_active(self):
+        return len(Profiler.active_profilers) > 0
+    
+    def __enter__(self, *args, **kwargs):
+        if not self.is_active():
+            return self
+        for profiler in Profiler.active_profilers:
+            profiler.stack.append(self.scope)
+        torch.cuda.current_stream().synchronize()
+        self._t0 = time.perf_counter_ns()
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        if not self.is_active():
+            return self
+        torch.cuda.current_stream().synchronize()
+        self._t1 = time.perf_counter_ns()
+        elapsed_time = self.get_elapsed_time_ns()
+        for profiler in Profiler.active_profilers:
+            profiler.add_elapsed_time(elapsed_time)
+            profiler.stack.pop()
+        return self
+
+    def get_elapsed_time_ns(self):
+        return (self._t1 - self._t0)
+
+
+    def wrap(self, fn):
+
+        @functools.wraps(fn)
+        def _wrapper(*args, **kwargs):
+            with self:
+                output = fn(*args, **kwargs)
+            return output
+        
+        return _wrapper
+
+
 class OwlVitImageFormatter(object):
     
     def __init__(self, device: str = "cuda"):
         self.device = device
 
+    @Timer("image_formatter").wrap
     def __call__(self, image):
         pixel_values = torch.from_numpy(np.asarray(image))[None, ...]
         pixel_values = pixel_values.permute(0, 3, 1, 2)
@@ -77,6 +175,7 @@ class OwlVitTextTokenizer(object):
         self.hf_preprocessor = hf_preprocessor
         self.device = device
 
+    @Timer("text_tokenizer").wrap
     def __call__(self, text):
         text_input = self.hf_preprocessor(text=text, return_tensors="pt")
         input_ids = text_input['input_ids'].to(self.device)
@@ -95,6 +194,7 @@ class OwlVitImagePreprocessorModule(nn.Module):
         )
         self.image_size = image_size
 
+    @Timer("image_preprocessor").wrap
     def forward(self, image):
         pixel_values = F.interpolate(image, (self.image_size, self.image_size), mode="bilinear")
         pixel_values.sub_(self.mean).div_(self.std)
@@ -128,6 +228,7 @@ class OwlVitImageEncoderModule(nn.Module):
         self.layer_norm = layer_norm
         self.image_size = image_size
 
+    @Timer("image_encoder").wrap
     def forward(self, pixel_values):
         vision_outputs = self.vision_model(pixel_values)
 
@@ -150,7 +251,7 @@ class OwlVitImageEncoderModule(nn.Module):
         data = torch.randn(1, 3, self.image_size, self.image_size).to("cpu")
 
         dynamic_axes = {
-            "image": {0: "batch"},
+            "image_preprocessed": {0: "batch"},
             "image_embeds": {0: "batch"}
         }
 
@@ -170,6 +271,7 @@ class OwlVitTextEncoderModule(nn.Module):
         self.text_model = text_model
         self.text_projection = text_projection
 
+    @Timer("text_encoder").wrap
     def forward(self, input_ids, attention_mask):
         text_outputs = self.text_model(input_ids, attention_mask)
         text_embeds = text_outputs[1]
@@ -216,6 +318,7 @@ class OwlVitBoxPredictorModule(nn.Module):
         box_bias = torch.cat([box_coord_bias, box_size_bias], dim=-1)
         return box_bias
 
+    @Timer("box_predictor").wrap
     def forward(self, image_embeds):
         pred_boxes = self.box_head(image_embeds)
         pred_boxes += self.box_bias
@@ -228,6 +331,7 @@ class OwlVitClassPredictorModule(nn.Module):
         super().__init__()
         self.class_head = class_head
 
+    @Timer("class_predictor").wrap
     def forward(self, image_embeds, query_embeds, query_mask):
 
         pred_logits, class_embeds = self.class_head(
@@ -241,6 +345,7 @@ class OwlVitClassPredictorModule(nn.Module):
 
 class OwlVitDetectionPostprocessor(object):
 
+    @Timer("detection_postprocessor").wrap
     def __call__(self, threshold, logits, boxes, target_sizes):
         probs = torch.max(logits, dim=-1)
         scores = torch.sigmoid(probs.values)
@@ -288,7 +393,6 @@ class OwlVitPredictor(object):
         self.text_tokenizer = text_tokenizer
         self.detection_postprocessor = detection_postprocessor
 
-
     @staticmethod
     def from_hf_pretrained(name: str, device: str = "cuda"):
 
@@ -315,6 +419,7 @@ class OwlVitPredictor(object):
             detection_postprocessor=OwlVitDetectionPostprocessor()
         )
     
+    @Timer("predictor").wrap
     def predict(self, image=None, text=None, threshold=0.1):
         #TODO: support multi-batch inference
 
@@ -346,4 +451,5 @@ class OwlVitPredictor(object):
         )
 
         return detections
+
     
