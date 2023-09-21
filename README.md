@@ -18,7 +18,7 @@ You can use NanoOWL in Python like this
 ```python3
 from nanoowl.utils.predictor import OwlVitPredictor
 
-predictor = OwlVitPredictor(
+predictor = OwlVitPredictor.from_pretrained(
     image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine",
     tresh=0.1
 )
