@@ -121,7 +121,7 @@ That's it!  If everything is working properly, you should see a visualization sa
 <img src="assets/owl_gradio_demo.jpg" height="256"/>
 
 ```bash
-python3 -m nanoowl.tools.gradio_demo \
+python3 examples/gradio_demo.py \
     --model="google/owlvit-base-patch32" \
     --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine" \
     --port=7860
