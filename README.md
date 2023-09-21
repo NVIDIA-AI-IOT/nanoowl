@@ -118,6 +118,8 @@ That's it!  If everything is working properly, you should see a visualization sa
 
 ### Example 1 - Gradio Demo
 
+<img src="assets/owl_gradio_demo.jpg" height="256"/>
+
 ```bash
 python3 -m nanoowl.gradio_demo \
     --model="google/owlvit-base-patch32" \
