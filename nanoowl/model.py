@@ -74,6 +74,7 @@ class Profiler:
 
     def __enter__(self, *args, **kwargs):
         Profiler.active_profilers.add(self)
+        return self
 
     def __exit__(self, *args, **kwargs):
         Profiler.active_profilers.remove(self)
@@ -159,6 +160,10 @@ class Timer:
 
 def use_timer(fn):
     return Timer(fn.__qualname__)(fn)
+
+
+def capture_timings():
+    return Profiler()
 
 
 class OwlVitImageFormatter(object):

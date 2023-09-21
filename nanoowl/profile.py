@@ -4,7 +4,7 @@ from nanoowl.model import (
     OwlVitPredictor,
     OwlVitImagePreprocessorModule,
     OwlVitImageEncoderModule,
-    Profiler, Timer
+    capture_timings
 )
 from nanoowl.utils.drawing import draw_detections_raw
 
@@ -17,13 +17,12 @@ if __name__ == "__main__":
 
     detections = predictor.predict(image=image, text=["an owl", "a glove"])
     
-    p = Profiler()
 
-    with p:
+    with capture_timings() as timings:
         for i in range(20):
             detections = predictor.predict(image=image, text=["an owl", "a glove"])
     
-    p.print_median_elapsed_times_ms()
+    timings.print_median_elapsed_times_ms()
 
     # draw_detections_raw(image, detections)
     # # print(len(detections))
