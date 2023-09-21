@@ -3,7 +3,8 @@ import PIL.Image
 import os
 from nanoowl.model import (
     OwlVitPredictor,
-    OwlVitImageEncoderModule
+    OwlVitImageEncoderModule,
+    OwlVitTextEncoderModule
 )
 from nanoowl.utils.drawing import draw_detections_raw
 
@@ -12,9 +13,14 @@ if __name__ == "__main__":
     
     hf_name = "google/owlvit-base-patch32"
     
-    OwlVitImageEncoderModule.build_trt(
+    # OwlVitImageEncoderModule.build_trt(
+    #     "google/owlvit-base-patch32",
+    #     "data/owlvit-base-patch32-image-encoder.engine"
+    # )
+
+    OwlVitTextEncoderModule.build_trt(
         "google/owlvit-base-patch32",
-        "data/owlvit-base-patch32-image-encoder.engine"
+        "data/owlvit-base-patch32-text-encoder.engine"
     )
 
     # folder = os.path.join("data", os.path.basename(hf_name))

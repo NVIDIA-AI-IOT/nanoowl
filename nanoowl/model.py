@@ -51,6 +51,17 @@ def hf_get_image_size(hf_name: str):
     return image_sizes[hf_name]
 
 
+def hf_get_embed_size(hf_name: str):
+
+    embed_sizes = {
+        "google/owlvit-base-patch32": 512,
+        "google/owlvit-base-patch16": 512,
+        "google/owlvit-large-patch14": 768, #TODO: check patch14 size
+    }
+
+    return embed_sizes[hf_name]
+
+
 def hf_build_model(hf_name):
     model = OwlViTForObjectDetection.from_pretrained(
         hf_name
@@ -292,7 +303,8 @@ class OwlVitImageEncoderModule(nn.Module):
             output_path, 
             input_names=["image_preprocessed"], 
             output_names=["image_embeds"],
-            dynamic_axes=dynamic_axes
+            dynamic_axes=dynamic_axes,
+            opset_version=17
         )
 
     @staticmethod
@@ -321,8 +333,8 @@ class OwlVitImageEncoderModule(nn.Module):
             f"--onnx={onnx_path}",
             f"--saveEngine={output_path}",
             f"--minShapes=image_preprocessed:{min_batch_size}x3x{image_size}x{image_size}",
-            f"--maxShapes=image_preprocessed:{opt_batch_size}x3x{image_size}x{image_size}",
-            f"--optShapes=image_preprocessed:{max_batch_size}x3x{image_size}x{image_size}",
+            f"--optShapes=image_preprocessed:{opt_batch_size}x3x{image_size}x{image_size}",
+            f"--maxShapes=image_preprocessed:{max_batch_size}x3x{image_size}x{image_size}",
         ]
 
         if fp16_mode:
@@ -365,6 +377,70 @@ class OwlVitTextEncoderModule(nn.Module):
         text_embeds = self.text_projection(text_embeds)
         return text_embeds
 
+    @staticmethod
+    def from_pretrained(hf_name: str, device: str = "cuda"):
+        hf_model = hf_build_model(hf_name)
+        model = OwlVitTextEncoderModule(
+            hf_model.owlvit.text_model, hf_model.owlvit.text_projection
+        ).eval().to(device)
+        return model
+
+    @staticmethod
+    def export_onnx(hf_name: str, output_path: str):
+        
+        model = OwlVitTextEncoderModule.from_pretrained(hf_name, "cpu")
+
+        input_ids = torch.zeros(1, 16, dtype=torch.int64)
+        attention_mask = torch.zeros(1, 16, dtype=torch.int64)
+
+        dynamic_axes = {
+            "input_ids": {0: "num_text"},
+            "attention_mask": {0: "num_text"}
+        }
+
+        torch.onnx.export(
+            model, 
+            (input_ids, attention_mask), 
+            output_path, 
+            input_names=["input_ids", "attention_mask"], 
+            output_names=["text_embeds"],
+            dynamic_axes=dynamic_axes,
+            opset_version=17
+        )
+
+    @staticmethod
+    def build_trt(
+            hf_name: str,
+            output_path: str,
+            min_num_text: int = 1,
+            opt_num_text: int = 1,
+            max_num_text: int = 20,
+            onnx_path: str = None,
+            fp16_mode: bool = True
+        ):
+
+        if onnx_path is None:
+            onnx_path = tempfile.mktemp()
+        
+        if not os.path.exists(onnx_path):
+            OwlVitTextEncoderModule.export_onnx(hf_name, onnx_path)
+
+        trtexec = get_trtexec_executable()
+        
+        args = [
+            trtexec,
+            f"--onnx={onnx_path}",
+            f"--saveEngine={output_path}",
+            f"--minShapes=input_ids:{min_num_text}x16,attention_mask:{min_num_text}x16",
+            f"--optShapes=input_ids:{opt_num_text}x16,attention_mask:{opt_num_text}x16",
+            f"--maxShapes=input_ids:{max_num_text}x16,attention_mask:{max_num_text}x16",
+        ]
+
+        if fp16_mode:
+            args += ["--fp16"]
+        
+        subprocess.call(args)
+        
 
 class OwlVitBoxPredictorModule(nn.Module):
     def __init__(self, box_head, num_patches):
@@ -482,9 +558,10 @@ class OwlVitPredictor(object):
 
     @staticmethod
     def from_pretrained(
-            name: str, 
-            device: str = "cuda",
-            image_encoder_engine = None
+                name: str, 
+                device: str = "cuda",
+                image_encoder_engine = None,
+                text_encoder_engine = None
             ):
 
         hf_model = hf_build_model(name)
@@ -500,6 +577,8 @@ class OwlVitPredictor(object):
             image_encoder = OwlVitImageEncoderModule(
                 hf_model.owlvit.vision_model, hf_model.layer_norm, image_size
             ).eval().to(device)
+
+
 
         return OwlVitPredictor(
             image_encoder=image_encoder,
@@ -523,7 +602,10 @@ class OwlVitPredictor(object):
 
         # Encode Text
         input_ids, attention_mask = self.text_tokenizer(text)
+
+
         text_embeds = self.text_encoder(input_ids, attention_mask)
+        print(text_embeds.shape)
         query_mask = input_ids[None, :, 0] > 0
         query_embeds = text_embeds[None, ...]
 
