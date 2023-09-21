@@ -440,7 +440,28 @@ class OwlVitTextEncoderModule(nn.Module):
             args += ["--fp16"]
         
         subprocess.call(args)
-        
+
+
+class OwlVitTextEncoderTrt(object):
+    def __init__(self, engine_path: str):
+
+        with trt.Logger() as logger, trt.Runtime(logger) as runtime:
+            with open(engine_path, 'rb') as f:
+                engine_bytes = f.read()
+            engine = runtime.deserialize_cuda_engine(engine_bytes)
+
+        trt_module = TRTModule(
+            engine=engine,
+            input_names=["input_ids", "attention_mask"],
+            output_names=["text_embeds"]
+        )
+
+        self.trt_module = trt_module
+
+    @use_timer
+    def __call__(self, input_ids, attention_mask):
+        return self.trt_module(input_ids, attention_mask)
+
 
 class OwlVitBoxPredictorModule(nn.Module):
     def __init__(self, box_head, num_patches):
@@ -578,13 +599,19 @@ class OwlVitPredictor(object):
                 hf_model.owlvit.vision_model, hf_model.layer_norm, image_size
             ).eval().to(device)
 
+        if image_encoder_engine is not None:
+            if device != "cuda":
+                raise RuntimeError("Device must be set to CUDA when using TensorRT.")
+            text_encoder = OwlVitTextEncoderTrt(text_encoder_engine)
+        else:
+            text_encoder = OwlVitTextEncoderModule(
+                hf_model.owlvit.text_model, hf_model.owlvit.text_projection
+            ).eval().to(device)
 
 
         return OwlVitPredictor(
             image_encoder=image_encoder,
-            text_encoder=OwlVitTextEncoderModule(
-                    hf_model.owlvit.text_model, hf_model.owlvit.text_projection
-                ).eval().to(device),
+            text_encoder=text_encoder,
             box_predictor=OwlVitBoxPredictorModule(
                     hf_model.box_head,
                     num_patches=image_size // patch_size
@@ -603,9 +630,8 @@ class OwlVitPredictor(object):
         # Encode Text
         input_ids, attention_mask = self.text_tokenizer(text)
 
-
         text_embeds = self.text_encoder(input_ids, attention_mask)
-        print(text_embeds.shape)
+        
         query_mask = input_ids[None, :, 0] > 0
         query_embeds = text_embeds[None, ...]
 

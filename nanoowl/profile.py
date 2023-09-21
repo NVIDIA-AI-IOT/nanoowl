@@ -12,8 +12,9 @@ from nanoowl.utils.drawing import draw_detections_raw
 if __name__ == "__main__":
         
     predictor = OwlVitPredictor.from_pretrained(
-        "google/owlvit-large-patch14"
-        # image_encoder_engine="data/owlvit-base-patch32/image_encoder.engine"
+        "google/owlvit-base-patch32",
+        image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine",
+        text_encoder_engine="data/owlvit-base-patch32-text-encoder.engine"
     )
 
     image = PIL.Image.open("assets/camera.jpg")
@@ -22,7 +23,7 @@ if __name__ == "__main__":
     
 
     with capture_timings() as timings:
-        for i in range(2):
+        for i in range(20):
             detections = predictor.predict(image=image, text=["an owl", "a glove"])
     
     timings.print_median_elapsed_times_ms()
