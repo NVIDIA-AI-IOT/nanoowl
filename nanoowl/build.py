@@ -24,8 +24,6 @@ if __name__ == "__main__":
     parser.add_argument("--skip_text", action="store_true")
     args = parser.parse_args()
 
-    hf_name = "google/owlvit-base-patch32"
-    
     if args.image_encoder_engine and not args.skip_image:
         OwlVitImageEncoderModule.build_trt(
             args.model,
