@@ -32,7 +32,8 @@ if __name__ == "__main__":
 
     def infer(image, text, threshold):
         image = PIL.Image.fromarray(image)
-        text = text.split(',')
+        text = [t.strip() for t in text.split(',')]
+        print(text)
         detections = predictor.predict(image=image, text=text, threshold=threshold)
         draw_detections_raw(image, detections)
         return np.asarray(image)
