@@ -5,7 +5,9 @@ import numpy as np
 import os
 import statistics
 import functools
+import subprocess
 import tensorrt as trt
+import tempfile
 from torch2trt import TRTModule
 from dataclasses import dataclass
 from transformers.models.owlvit.modeling_owlvit import (
@@ -18,6 +20,13 @@ import time
 from collections import OrderedDict
 
 HF_DEFAULT = "google/owlvit-base-patch32"
+
+
+def get_trtexec_executable():
+    trtexec = "/usr/src/tensorrt/bin/trtexec"
+    if not os.path.exists(trtexec):
+        trtexec = "trtexec"
+    return trtexec
 
 
 def hf_get_patch_size(hf_name: str):
@@ -255,11 +264,22 @@ class OwlVitImageEncoderModule(nn.Module):
 
         return image_embeds
     
-    def export_onnx(self, path: str):
+    @staticmethod
+    def from_pretrained(hf_name: str, device: str = "cuda"):
+        hf_model = hf_build_model(hf_name)
+        image_size = hf_get_image_size(hf_name)
+        image_encoder = OwlVitImageEncoderModule(
+            hf_model.owlvit.vision_model, hf_model.layer_norm, image_size
+        ).eval().to(device)
+        return image_encoder
 
-        model = self.eval().to("cpu")
+    @staticmethod
+    def export_onnx(hf_name: str, output_path: str):
+        
+        model = OwlVitImageEncoderModule.from_pretrained(hf_name, "cpu")
+        image_size = hf_get_image_size(hf_name)
 
-        data = torch.randn(1, 3, self.image_size, self.image_size).to("cpu")
+        data = torch.randn(1, 3, image_size, image_size).to("cpu")
 
         dynamic_axes = {
             "image_preprocessed": {0: "batch"},
@@ -269,11 +289,46 @@ class OwlVitImageEncoderModule(nn.Module):
         torch.onnx.export(
             model, 
             data, 
-            path, 
+            output_path, 
             input_names=["image_preprocessed"], 
             output_names=["image_embeds"],
             dynamic_axes=dynamic_axes
         )
+
+    @staticmethod
+    def build_trt(
+            hf_name: str,
+            output_path: str,
+            min_batch_size: int = 1,
+            opt_batch_size: int = 1,
+            max_batch_size: int = 1,
+            onnx_path: str = None,
+            fp16_mode: bool = True
+        ):
+
+        image_size = hf_get_image_size(hf_name)
+
+        if onnx_path is None:
+            onnx_path = tempfile.mktemp()
+        
+        if not os.path.exists(onnx_path):
+            OwlVitImageEncoderModule.export_onnx(hf_name, onnx_path)
+
+        trtexec = get_trtexec_executable()
+        
+        args = [
+            trtexec,
+            f"--onnx={onnx_path}",
+            f"--saveEngine={output_path}",
+            f"--minShapes=image_preprocessed:{min_batch_size}x3x{image_size}x{image_size}",
+            f"--maxShapes=image_preprocessed:{opt_batch_size}x3x{image_size}x{image_size}",
+            f"--optShapes=image_preprocessed:{max_batch_size}x3x{image_size}x{image_size}",
+        ]
+
+        if fp16_mode:
+            args += ["--fp16"]
+        
+        subprocess.call(args)
 
 
 class OwlVitImageEncoderTrt(object):

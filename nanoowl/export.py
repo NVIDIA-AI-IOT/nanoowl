@@ -15,7 +15,7 @@ if __name__ == "__main__":
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    image_encoder_path = os.path.join(folder, "image_encoder.onnx")
+    image_encoder_path = os.path.join(folder, os.path.basename(hf_name) + "-image-encoder.onnx")
     
     predictor = OwlVitPredictor.from_pretrained(hf_name)
 
