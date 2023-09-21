@@ -146,7 +146,7 @@ class Timer:
         return (self._t1 - self._t0)
 
 
-    def wrap(self, fn):
+    def __call__(self, fn):
 
         @functools.wraps(fn)
         def _wrapper(*args, **kwargs):
@@ -162,7 +162,7 @@ class OwlVitImageFormatter(object):
     def __init__(self, device: str = "cuda"):
         self.device = device
 
-    @Timer("image_formatter").wrap
+    @Timer("image_formatter")
     def __call__(self, image):
         pixel_values = torch.from_numpy(np.asarray(image))[None, ...]
         pixel_values = pixel_values.permute(0, 3, 1, 2)
@@ -175,7 +175,7 @@ class OwlVitTextTokenizer(object):
         self.hf_preprocessor = hf_preprocessor
         self.device = device
 
-    @Timer("text_tokenizer").wrap
+    @Timer("text_tokenizer")
     def __call__(self, text):
         text_input = self.hf_preprocessor(text=text, return_tensors="pt")
         input_ids = text_input['input_ids'].to(self.device)
@@ -194,7 +194,7 @@ class OwlVitImagePreprocessorModule(nn.Module):
         )
         self.image_size = image_size
 
-    @Timer("image_preprocessor").wrap
+    @Timer("image_preprocessor")
     def forward(self, image):
         pixel_values = F.interpolate(image, (self.image_size, self.image_size), mode="bilinear")
         pixel_values.sub_(self.mean).div_(self.std)
@@ -228,7 +228,7 @@ class OwlVitImageEncoderModule(nn.Module):
         self.layer_norm = layer_norm
         self.image_size = image_size
 
-    @Timer("image_encoder").wrap
+    @Timer("image_encoder")
     def forward(self, pixel_values):
         vision_outputs = self.vision_model(pixel_values)
 
@@ -271,7 +271,7 @@ class OwlVitTextEncoderModule(nn.Module):
         self.text_model = text_model
         self.text_projection = text_projection
 
-    @Timer("text_encoder").wrap
+    @Timer("text_encoder")
     def forward(self, input_ids, attention_mask):
         text_outputs = self.text_model(input_ids, attention_mask)
         text_embeds = text_outputs[1]
@@ -318,7 +318,7 @@ class OwlVitBoxPredictorModule(nn.Module):
         box_bias = torch.cat([box_coord_bias, box_size_bias], dim=-1)
         return box_bias
 
-    @Timer("box_predictor").wrap
+    @Timer("box_predictor")
     def forward(self, image_embeds):
         pred_boxes = self.box_head(image_embeds)
         pred_boxes += self.box_bias
@@ -331,7 +331,7 @@ class OwlVitClassPredictorModule(nn.Module):
         super().__init__()
         self.class_head = class_head
 
-    @Timer("class_predictor").wrap
+    @Timer("class_predictor")
     def forward(self, image_embeds, query_embeds, query_mask):
 
         pred_logits, class_embeds = self.class_head(
@@ -345,7 +345,7 @@ class OwlVitClassPredictorModule(nn.Module):
 
 class OwlVitDetectionPostprocessor(object):
 
-    @Timer("detection_postprocessor").wrap
+    @Timer("detection_postprocessor")
     def __call__(self, threshold, logits, boxes, target_sizes):
         probs = torch.max(logits, dim=-1)
         scores = torch.sigmoid(probs.values)
@@ -419,7 +419,7 @@ class OwlVitPredictor(object):
             detection_postprocessor=OwlVitDetectionPostprocessor()
         )
     
-    @Timer("predictor").wrap
+    @Timer("predictor")
     def predict(self, image=None, text=None, threshold=0.1):
         #TODO: support multi-batch inference
 
