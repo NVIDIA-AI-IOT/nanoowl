@@ -9,7 +9,7 @@ from nanoowl.utils.predictor import (
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image", type=str, default="assets/owl_glove.jpg")
+    parser.add_argument("--image", type=str, default="assets/owl_glove_small.jpg")
     parser.add_argument("--text", action='append', required=True)
     parser.add_argument("--threshold", type=float, default=0.1)
     parser.add_argument("--output", type=str, default="data/owl_glove_out.jpg")

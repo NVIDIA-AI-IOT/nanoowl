@@ -577,6 +577,21 @@ class OwlVitPredictor(object):
         self.text_tokenizer = text_tokenizer
         self.detection_postprocessor = detection_postprocessor
 
+        # cache values
+        self.input_ids = None
+        self.attention_mask = None
+        self.text_embeds = None
+        self.query_mask = None
+        self.query_embeds = None
+        self.image = None
+        self.image_preprocessed = None
+        self.image_embeds = None
+        self.pred_boxes = None
+        self.pred_logits = None
+        self.class_embeds = None
+        self.image_sizes = None
+        self.detections = None
+
     @staticmethod
     def from_pretrained(
                 name: str, 
@@ -623,32 +638,72 @@ class OwlVitPredictor(object):
             detection_postprocessor=OwlVitDetectionPostprocessor()
         )
     
-    @use_timer
-    def predict(self, image=None, text=None, threshold=0.1):
-        #TODO: support multi-batch inference
-
-        # Encode Text
+    def process_text(self, text):
         input_ids, attention_mask = self.text_tokenizer(text)
-
         text_embeds = self.text_encoder(input_ids, attention_mask)
-        
         query_mask = input_ids[None, :, 0] > 0
         query_embeds = text_embeds[None, ...]
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "text_embeds": text_embeds,
+            "query_mask": query_mask,
+            "query_embeds": query_embeds
+        }
 
-        # Encode Image
+    def process_image(self, image):
         image = self.image_formatter(image)
         image_preprocessed = self.image_preprocessor(image)
         image_embeds = self.image_encoder(image_preprocessed)
-
-        # Predict boxes
+        image_sizes = torch.Tensor([[image.size(2), image.size(3)]]).to(image.device)
         pred_boxes = self.box_predictor(image_embeds)
+        return {
+            "image": image,
+            "image_preprocessed": image_preprocessed,
+            "image_embeds": image_embeds,
+            "image_sizes": image_sizes,
+            "pred_boxes": pred_boxes
+        }
+
+    @use_timer
+    def predict(self, 
+            image=None,
+            image_processed=None,
+            text=None,
+            text_processed=None,
+            threshold=0.1
+        ):
+
+        if image_processed is None:
+            if image is None:
+                raise RuntimeError("Must provide image if image_processed is None")
+            image_processed = self.process_image(image)
+        
+        if text_processed is None:
+            if text is None:
+                raise RuntimeError("Must provide text if text_processed is None")
+            text_processed = self.process_text(text)
+
+        #TODO: support multi-batch inference
+
+        # Encode Text
+        input_ids = text_processed['input_ids']
+        attention_mask = text_processed['attention_mask']
+        text_embeds = text_processed['text_embeds']
+        query_mask = text_processed['query_mask']
+        query_embeds = text_processed['query_embeds']
+
+        # Encode Image
+        image = image_processed['image']
+        image_preprocessed = image_processed['image_preprocessed']
+        image_embeds = image_processed['image_embeds']
+        image_sizes = image_processed['image_sizes']
+        pred_boxes = image_processed['pred_boxes']
 
         # Predict classes
         pred_logits, class_embeds = self.class_predictor(image_embeds, query_embeds, query_mask)
 
         # Decode
-        image_sizes = torch.Tensor([[image.size(2), image.size(3)]]).to(image.device)
-
         detections = self.detection_postprocessor(
             threshold=threshold, 
             logits=pred_logits,
