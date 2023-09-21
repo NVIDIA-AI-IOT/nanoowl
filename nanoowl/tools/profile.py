@@ -1,10 +1,11 @@
 import argparse
 import PIL.Image
 from nanoowl.utils.predictor import (
-    OwlVitPredictor,
+    OwlVitPredictor
+)
+from nanoowl.utils.profiling import (
     capture_timings
 )
-
 
 if __name__ == "__main__":
 
