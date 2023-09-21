@@ -1,32 +1,36 @@
-import PIL.Image
-import matplotlib.pyplot as plt
-from nanoowl.utils.predictor import Predictor
-from nanoowl.utils.drawing import draw_detection
 import argparse
+import PIL.Image
+from nanoowl.utils.predictor import (
+    OwlVitPredictor
+)
+from nanoowl.utils.drawing import draw_detections
+
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", type=str, default="assets/owl_glove.jpg")
-    parser.add_argument("--vision_engine", type=str, default=None)
-    parser.add_argument("--vision_model_name", type=str, default=None)
-    parser.add_argument("--vision_checkpoint", type=str, default=None)
-    parser.add_argument("--prompt", action='append', required=True)
-    parser.add_argument("--thresh", type=float, default=0.1)
+    parser.add_argument("--text", action='append', required=True)
+    parser.add_argument("--threshold", type=float, default=0.1)
+    parser.add_argument("--output", type=str, default="data/owl_glove_out.jpg")
+    parser.add_argument("--model", type=str, default="google/owlvit-base-patch32")
+    parser.add_argument("--image_encoder_engine", type=str, default="data/owlvit-base-patch32-image-encoder.engine")
+    parser.add_argument("--output_path", type=str, default="data/predict_out.jpg")
     args = parser.parse_args()
-    print(args)
-    predictor = Predictor(
-        threshold=args.thresh, 
-        vision_engine=args.vision_engine,
-        vision_model_name=args.vision_model_name,
-        vision_checkpoint=args.vision_checkpoint
+
+
+    predictor = OwlVitPredictor.from_pretrained(
+        args.model,
+        image_encoder_engine=args.image_encoder_engine,
+        device="cuda"
     )
 
     image = PIL.Image.open(args.image)
 
-    detections = predictor.predict_text(image, text=args.prompt)
+    text = args.text
 
-    for detection in detections:
-        draw_detection(image, detection)
+    detections = predictor.predict(image=image, text=text, threshold=args.threshold)
 
-    image.save("data/basic_usage_out.jpg")
+    draw_detections(image, detections)
+
+    image.save(args.output)
