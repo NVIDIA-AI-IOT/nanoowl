@@ -19,6 +19,12 @@ if __name__ == "__main__":
     parser.add_argument("--output_path", type=str, default="data/predict_out.jpg")
     args = parser.parse_args()
 
+    if args.image_encoder_engine.lower() == "none":
+        args.image_encoder_engine = None
+
+    if args.text_encoder_engine.lower() == "none":
+        args.text_encoder_engine = None
+        
     predictor = OwlVitPredictor.from_pretrained(
         args.model,
         image_encoder_engine=args.image_encoder_engine,
