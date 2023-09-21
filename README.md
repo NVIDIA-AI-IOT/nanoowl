@@ -127,6 +127,19 @@ python3 examples/gradio_demo.py \
     --port=7860
 ```
 
+### Example 2 - Live Camera
+
+<!-- <img src="" height="256"/> -->
+
+```bash
+python3 examples/live_camera.py \
+    --text="a toy robot" \
+    --model="google/owlvit-base-patch32" \
+    --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine" \
+    --camera_device=0 \
+    --threshold=0.1
+```
+
 <a id="acknowledgement"></a>
 ## 👏 Acknowledgement
 
