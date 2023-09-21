@@ -30,6 +30,8 @@ detections = predictor.predict(image=image, texts=["an owl", "a glove"], thresho
 print(detections)
 ```
 
+> See [Setup](#setup) for instructions on how to build the image encoder engine.
+
 <a id="performance"></a>
 ## ⏱️ Performance
 
