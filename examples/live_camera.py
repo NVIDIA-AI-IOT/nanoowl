@@ -12,14 +12,11 @@ if __name__ == "__main__":
         
     parser = argparse.ArgumentParser()
     parser.add_argument("--camera_device", type=int, default=0)
-    parser.add_argument("--text", action='append', required=True)
+    parser.add_argument("--text", type=str, default="a face")
     parser.add_argument("--model", type=str, default="google/owlvit-base-patch32")
     parser.add_argument("--image_encoder_engine", type=str, default="data/owlvit-base-patch32-image-encoder.engine")
-    parser.add_argument("--prompt", type=str, default="a person")
     parser.add_argument("--threshold", type=float, default=0.1)
     args = parser.parse_args()
-
-    prompt = args.prompt
 
     cap = cv2.VideoCapture(args.camera_device)
 
@@ -63,7 +60,7 @@ if __name__ == "__main__":
         dt = (t1 - t0) / 1e9
         t0 = t1
         fps = 1. / dt
-        cv2.putText(image, prompt, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 186, 118), 2, cv2.LINE_AA)
+        cv2.putText(image, args.text, (50, 50), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 186, 118), 2, cv2.LINE_AA)
         cv2.putText(image, f"FPS: {round(fps, 2)}", (50, 150), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 186, 118), 2, cv2.LINE_AA)
         cv2.imshow("image", image)
 
