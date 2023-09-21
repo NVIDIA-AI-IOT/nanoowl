@@ -129,7 +129,7 @@ python3 examples/gradio_demo.py \
 
 ### Example 2 - Live Camera
 
-<!-- <img src="" height="256"/> -->
+<img src="assets/nanoowl_jetbot.gif"  height="40%" width="40%"/>
 
 ```bash
 python3 examples/live_camera.py \
