@@ -436,8 +436,8 @@ class OwlVitTextEncoderModule(nn.Module):
             f"--maxShapes=input_ids:{max_num_text}x16,attention_mask:{max_num_text}x16",
         ]
 
-        if fp16_mode:
-            args += ["--fp16"]
+        # if fp16_mode:
+        #     args += ["--fp16"]
         
         subprocess.call(args)
 
@@ -599,7 +599,7 @@ class OwlVitPredictor(object):
                 hf_model.owlvit.vision_model, hf_model.layer_norm, image_size
             ).eval().to(device)
 
-        if image_encoder_engine is not None:
+        if text_encoder_engine is not None:
             if device != "cuda":
                 raise RuntimeError("Device must be set to CUDA when using TensorRT.")
             text_encoder = OwlVitTextEncoderTrt(text_encoder_engine)
