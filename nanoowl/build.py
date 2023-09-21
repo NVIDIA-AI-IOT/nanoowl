@@ -16,8 +16,8 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="google/owlvit-base-patch32")
     parser.add_argument("--image_encoder_engine", type=str, default="data/owlvit-base-patch32-image-encoder.engine")
     parser.add_argument("--image_encoder_onnx", type=str, default="data/owlvit-base-patch32-image-encoder.onnx")
-    parser.add_argument("--text_encoder_engine", type=str, default="data/owlvit-base-patch32-text-encoder.engine")
-    parser.add_argument("--text_encoder_onnx", type=str, default="data/owlvit-base-patch32-text-encoder.onnx")
+    # parser.add_argument("--text_encoder_engine", type=str, default="data/owlvit-base-patch32-text-encoder.engine")
+    # parser.add_argument("--text_encoder_onnx", type=str, default="data/owlvit-base-patch32-text-encoder.onnx")
     parser.add_argument("--max_num_image", type=int, default=1)
     parser.add_argument("--max_num_text", type=int, default=20)
     parser.add_argument("--skip_image", action="store_true")
@@ -34,11 +34,11 @@ if __name__ == "__main__":
             onnx_path=args.image_encoder_onnx
         )
 
-    if args.text_encoder_engine and not args.skip_text:
+    # if args.text_encoder_engine and not args.skip_text:
 
-        OwlVitTextEncoderModule.build_trt(
-            args.model,
-            args.text_encoder_engine,
-            max_num_text=args.max_num_text,
-            onnx_path=args.text_encoder_onnx
-        )
+    #     OwlVitTextEncoderModule.build_trt(
+    #         args.model,
+    #         args.text_encoder_engine,
+    #         max_num_text=args.max_num_text,
+    #         onnx_path=args.text_encoder_onnx
+    #     )

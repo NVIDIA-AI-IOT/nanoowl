@@ -13,7 +13,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="google/owlvit-base-patch32")
     parser.add_argument("--image_encoder_engine", type=str, default="data/owlvit-base-patch32-image-encoder.engine")
-    parser.add_argument("--text_encoder_engine", type=str, default="data/owlvit-base-patch32-text-encoder.engine")
+    # parser.add_argument("--text_encoder_engine", type=str, default="data/owlvit-base-patch32-text-encoder.engine")
     parser.add_argument("--device", type=str, default="cuda")
     args = parser.parse_args()
 
@@ -21,12 +21,12 @@ if __name__ == "__main__":
         args.image_encoder_engine = None
 
     # if args.text_encoder_engine.lower() == "none":
-    args.text_encoder_engine = None
+    #     args.text_encoder_engine = None
         
     predictor = OwlVitPredictor.from_pretrained(
         args.model,
         image_encoder_engine=args.image_encoder_engine,
-        text_encoder_engine=args.text_encoder_engine,
+        # text_encoder_engine=args.text_encoder_engine,
         device="cuda"
     )
 

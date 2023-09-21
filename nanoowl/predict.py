@@ -15,20 +15,20 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, default="data/owl_glove_out.jpg")
     parser.add_argument("--model", type=str, default="google/owlvit-base-patch32")
     parser.add_argument("--image_encoder_engine", type=str, default="data/owlvit-base-patch32-image-encoder.engine")
-    parser.add_argument("--text_encoder_engine", type=str, default="data/owlvit-base-patch32-text-encoder.engine")
+    # parser.add_argument("--text_encoder_engine", type=str, default="data/owlvit-base-patch32-text-encoder.engine")
     parser.add_argument("--output_path", type=str, default="data/predict_out.jpg")
     args = parser.parse_args()
 
     if args.image_encoder_engine.lower() == "none":
         args.image_encoder_engine = None
 
-    if args.text_encoder_engine.lower() == "none":
-        args.text_encoder_engine = None
-        
+    # if args.text_encoder_engine.lower() == "none":
+    #     args.text_encoder_engine = None
+
     predictor = OwlVitPredictor.from_pretrained(
         args.model,
         image_encoder_engine=args.image_encoder_engine,
-        text_encoder_engine=args.text_encoder_engine,
+        # text_encoder_engine=args.text_encoder_engine,
         device="cuda"
     )
 
