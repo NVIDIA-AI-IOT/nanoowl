@@ -11,7 +11,10 @@ from nanoowl.utils.drawing import draw_detections_raw
 
 if __name__ == "__main__":
         
-    predictor = OwlVitPredictor.from_hf_pretrained("google/owlvit-base-patch32")
+    predictor = OwlVitPredictor.from_pretrained(
+        "google/owlvit-base-patch32",
+        image_encoder_engine="data/owlvit-base-patch32/image_encoder.engine"
+    )
 
     image = PIL.Image.open("assets/camera.jpg")
 

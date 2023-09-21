@@ -5,6 +5,8 @@ import numpy as np
 import os
 import statistics
 import functools
+import tensorrt as trt
+from torch2trt import TRTModule
 from dataclasses import dataclass
 from transformers.models.owlvit.modeling_owlvit import (
     OwlViTForObjectDetection
@@ -274,6 +276,27 @@ class OwlVitImageEncoderModule(nn.Module):
         )
 
 
+class OwlVitImageEncoderTrt(object):
+    def __init__(self, engine_path: str):
+
+        with trt.Logger() as logger, trt.Runtime(logger) as runtime:
+            with open(engine_path, 'rb') as f:
+                engine_bytes = f.read()
+            engine = runtime.deserialize_cuda_engine(engine_bytes)
+
+        trt_module = TRTModule(
+            engine=engine,
+            input_names=["image_preprocessed"],
+            output_names=["image_embeds"]
+        )
+
+        self.trt_module = trt_module
+
+    @use_timer
+    def __call__(self, pixel_values):
+        return self.trt_module(pixel_values)
+
+
 class OwlVitTextEncoderModule(nn.Module):
     def __init__(self, text_model, text_projection):
         super().__init__()
@@ -403,17 +426,28 @@ class OwlVitPredictor(object):
         self.detection_postprocessor = detection_postprocessor
 
     @staticmethod
-    def from_hf_pretrained(name: str, device: str = "cuda"):
+    def from_pretrained(
+            name: str, 
+            device: str = "cuda",
+            image_encoder_engine = None
+            ):
 
         hf_model = hf_build_model(name)
         hf_processor = hf_build_processor(name)
         image_size = hf_get_image_size(name)
         patch_size = hf_get_patch_size(name)
 
+        if image_encoder_engine is not None:
+            if device != "cuda":
+                raise RuntimeError("Device must be set to CUDA when using TensorRT.")
+            image_encoder = OwlVitImageEncoderTrt(image_encoder_engine)
+        else:
+            image_encoder = OwlVitImageEncoderModule(
+                hf_model.owlvit.vision_model, hf_model.layer_norm, image_size
+            ).eval().to(device)
+
         return OwlVitPredictor(
-            image_encoder=OwlVitImageEncoderModule(
-                    hf_model.owlvit.vision_model, hf_model.layer_norm, image_size
-                ).eval().to(device),
+            image_encoder=image_encoder,
             text_encoder=OwlVitTextEncoderModule(
                     hf_model.owlvit.text_model, hf_model.owlvit.text_projection
                 ).eval().to(device),
