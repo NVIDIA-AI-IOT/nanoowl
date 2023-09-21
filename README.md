@@ -25,7 +25,7 @@ predictor = OwlVitPredictor.from_pretrained(
 
 image = PIL.Image.open("assets/owl_glove_small.jpg")
 
-detections = predictor.predict(image=image, texts=["an owl", "a glove"], threshold=0.1)
+detections = predictor.predict(image=image, text=["an owl", "a glove"], threshold=0.1)
 
 print(detections)
 ```
