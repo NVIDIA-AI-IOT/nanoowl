@@ -16,7 +16,7 @@ NanoOWL is a project that optimizes [OWL-ViT](https://huggingface.co/docs/transf
 You can use NanoOWL in Python like this
 
 ```python3
-from nanoowl.model import OwlVitPredictor
+from nanoowl.utils.predictor import OwlVitPredictor
 
 predictor = OwlVitPredictor(
     image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine",
@@ -93,7 +93,7 @@ NanoOWL runs real-time on Jetson Orin Nano.
 3. Build the TensorRT engine for the OWL-ViT vision encoder
 
     ```bash
-    python3 -m nanoowl.build \
+    python3 -m nanoowl.tools.build_trt \
         --model="google/owlvit-base-patch32" \
         --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine"
     ```
@@ -102,7 +102,7 @@ NanoOWL runs real-time on Jetson Orin Nano.
 4. Run the basic usage example to ensure everything is working
 
     ```bash
-    python3 -m nanoowl.predict \
+    python3 -m nanoowl.tools.predict \
         --image="assets/owl_glove_small.jpg" \
         --text="an owl" \
         --model="google/owlvit-base-patch32" \
@@ -121,7 +121,7 @@ That's it!  If everything is working properly, you should see a visualization sa
 <img src="assets/owl_gradio_demo.jpg" height="256"/>
 
 ```bash
-python3 -m nanoowl.gradio_demo \
+python3 -m nanoowl.tools.gradio_demo \
     --model="google/owlvit-base-patch32" \
     --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine" \
     --port=7860

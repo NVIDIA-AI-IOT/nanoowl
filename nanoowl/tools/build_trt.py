@@ -2,7 +2,7 @@ import pytest
 import PIL.Image
 import os
 import argparse
-from nanoowl.model import (
+from nanoowl.utils.predictor import (
     OwlVitPredictor,
     OwlVitImageEncoderModule,
     OwlVitTextEncoderModule

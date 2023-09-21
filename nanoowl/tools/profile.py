@@ -1,9 +1,9 @@
 import argparse
 import PIL.Image
-from nanoowl.model import (
-    OwlVitPredictor
+from nanoowl.utils.predictor import (
+    OwlVitPredictor,
+    capture_timings
 )
-from nanoowl.utils.drawing import draw_detections_raw
 
 
 if __name__ == "__main__":
@@ -38,6 +38,8 @@ if __name__ == "__main__":
 
     detections = predictor.predict(image=image, text=text, threshold=args.threshold)
 
-    draw_detections_raw(image, detections)
-
-    image.save(args.output)
+    with capture_timings() as timings:
+        for i in range(20):
+            detections = predictor.predict(image=image, text=args.text)
+    
+    timings.print_median_elapsed_times_ms()

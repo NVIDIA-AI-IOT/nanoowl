@@ -2,10 +2,10 @@ import argparse
 import PIL.Image
 import gradio as gr
 import numpy as np
-from nanoowl.model import (
+from nanoowl.utils.predictor import (
     OwlVitPredictor
 )
-from nanoowl.utils.drawing import draw_detections_raw
+from nanoowl.utils.drawing import draw_detections
 
 
 if __name__ == "__main__":
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         text = [t.strip() for t in text.split(',')]
         print(text)
         detections = predictor.predict(image=image, text=text, threshold=threshold)
-        draw_detections_raw(image, detections)
+        draw_detections(image, detections)
         return np.asarray(image)
 
     demo = gr.Interface(
@@ -47,7 +47,8 @@ if __name__ == "__main__":
             gr.Text(value="an owl, a glove, a face"), 
             gr.Slider(minimum=0, maximum=1, value=0.1, step=0.0025)
         ], 
-        outputs=["image"]
+        outputs=["image"],
+        title=f"TRTOWL ({args.model})"
     )
 
     demo.launch(
