@@ -15,6 +15,8 @@ if __name__ == "__main__":
     parser.add_argument("--image_encoder_engine", type=str, default="data/owlvit-base-patch32-image-encoder.engine")
     # parser.add_argument("--text_encoder_engine", type=str, default="data/owlvit-base-patch32-text-encoder.engine")
     parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--host", type=str, default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=7860)
     args = parser.parse_args()
 
     if args.image_encoder_engine.lower() == "none":
@@ -48,4 +50,7 @@ if __name__ == "__main__":
         outputs=["image"]
     )
 
-    demo.launch()
+    demo.launch(
+        server_name=args.host,
+        server_port=args.port
+    )

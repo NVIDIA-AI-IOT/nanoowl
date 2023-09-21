@@ -116,12 +116,14 @@ That's it!  If everything is working properly, you should see a visualization sa
 <a id="examples"></a>
 ## 🤸 Examples
 
-### Example 1 - Basic usage
+### Example 1 - Gradio Demo
 
-### Example 2 - Live camera demo
-
-### Example 3 - Instance segmentation with [NanoSAM](https://github.com/NVIDIA-AI-IOT/nanosam)
-
+```bash
+python3 -m nanoowl.gradio_demo \
+    --model="google/owlvit-base-patch32" \
+    --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine" \
+    --port=7860
+```
 
 <a id="acknowledgement"></a>
 ## 👏 Acknowledgement

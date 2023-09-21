@@ -69,6 +69,6 @@ def draw_detections_raw(
         bbox_height = (y1 - y0)
         bbox_width = (x1 - x0)
 
-        draw.rectangle(((x0, y0), (x1, y1)), outline=(118, 185, 0, 255), width=16)
+        draw.rectangle(((x0, y0), (x1, y1)), outline=(118, 185, 0, 255), width=4)
 
     return image
