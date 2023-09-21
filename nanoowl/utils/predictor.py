@@ -3,8 +3,6 @@ import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 import os
-import statistics
-import functools
 import subprocess
 import tensorrt as trt
 import tempfile
@@ -20,7 +18,6 @@ from nanoowl.utils.profiling import (
     use_timer
 )
 import time
-from collections import OrderedDict
 
 HF_DEFAULT = "google/owlvit-base-patch32"
 

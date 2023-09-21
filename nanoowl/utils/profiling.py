@@ -1,5 +1,8 @@
 import torch
 import time
+import functools
+import statistics
+from collections import OrderedDict
 
 
 class Profiler:
