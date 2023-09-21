@@ -16,18 +16,18 @@ NanoOWL is a project that optimizes [OWL-ViT](https://huggingface.co/docs/transf
 You can use NanoOWL in Python like this
 
 ```python3
-from nanoowl.utils.predictor import Predictor
+from nanoowl.model import OwlVitPredictor
 
-predictor = Predictor(
-    vision_engine="data/owlvit_vision_model.engine",
+predictor = OwlVitPredictor(
+    image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine",
     tresh=0.1
 )
 
-image = PIL.Image.open("assets/dogs.jpg")
+image = PIL.Image.open("assets/owl_glove_small.jpg")
 
-detections = predictor.predict(image, texts=["a dog"])
+detections = predictor.predict(image=image, texts=["an owl", "a glove"], threshold=0.1)
 
-print(detections[0]['bbox'])
+print(detections)
 ```
 
 <a id="performance"></a>
@@ -92,31 +92,26 @@ NanoOWL runs real-time on Jetson Orin Nano.
 
 3. Build the TensorRT engine for the OWL-ViT vision encoder
 
-    1. Export the OWL-ViT vision encoder to ONNX
-
-        ```bash
-        python3 -m nanoowl.tools.export_vision_model_onnx \
-            --output="data/owlvit_vision_model.onnx"
-        ```
+    ```bash
+    python3 -m nanoowl.build \
+        --model="google/owlvit-base-patch32" \
+        --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine"
+    ```
     
-    2. Build the TensorRT engine with ``trtexec``
-
-        ```bash
-        trtexec \
-            --onnx=data/owlvit_vision_model.onnx \
-            --saveEngine=data/owlvit_vision_model.engine \
-            --fp16
-        ```
 
 4. Run the basic usage example to ensure everything is working
 
     ```bash
-    python3 examples/basic_usage.py \
-        --vision_engine=data/owlvit_vision_model.engine \
-        --thresh=0.1
+    python3 -m nanoowl.predict \
+        --image="assets/owl_glove_small.jpg" \
+        --text="an owl" \
+        --model="google/owlvit-base-patch32" \
+        --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine" \
+        --threshold=0.1 \
+        --output_path="data/predict_out.jpg"
     ```
 
-That's it!  If everything is working properly, you should see a visualization saved to ``data/visualize_owlvit_out.jpg``.  
+That's it!  If everything is working properly, you should see a visualization saved to ``data/predict_out.jpg``.  
 
 <a id="examples"></a>
 ## 🤸 Examples
