@@ -19,8 +19,8 @@ You can use NanoOWL in Python like this
 from nanoowl.utils.predictor import OwlVitPredictor
 
 predictor = OwlVitPredictor.from_pretrained(
-    image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine",
-    tresh=0.1
+    "google/owlvit-base-patch32",
+    image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine"
 )
 
 image = PIL.Image.open("assets/owl_glove_small.jpg")
