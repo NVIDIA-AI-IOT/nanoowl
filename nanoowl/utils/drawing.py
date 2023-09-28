@@ -27,16 +27,18 @@ def draw_detections(
 def draw_detections_cv2(
         image,
         detections,
-        color=(0, 186, 118),
+        colors=[(0, 186, 118)],
         thickness=3
     ):
 
 
-    for bbox in detections[0]['boxes']:
+    for label, bbox in zip(detections[0]['labels'], detections[0]['boxes']):
         x0, y0, x1, y1 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
 
         bbox_height = (y1 - y0)
         bbox_width = (x1 - x0)
+
+        color = colors[int(label)]
 
         image = cv2.rectangle(image, (x0, y0), (x1, y1), color, thickness)
 

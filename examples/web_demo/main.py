@@ -6,6 +6,7 @@ import cv2
 import time
 import PIL.Image
 import matplotlib.pyplot as plt
+from typing import List
 from nanoowl.utils.predictor import OwlVitPredictor
 from nanoowl.utils.drawing import draw_detections_cv2
 
@@ -16,6 +17,16 @@ MODEL_NAME = "google/owlvit-base-patch32"
 IMAGE_ENCODER_ENGINE = "../../data/owlvit-base-patch32-image-encoder.engine"
 
 prompt: str = None
+
+
+def get_colors(count: int):
+    cmap = plt.cm.get_cmap("rainbow", count)
+    colors = []
+    for i in range(count):
+        color = cmap(i)
+        color = [int(255 * value) for value in color]
+        colors.append(tuple(color))
+    return colors
 
 
 def cv2_to_pil(image):
@@ -85,10 +96,12 @@ async def detection_loop(app: web.Application):
 
 
         if prompt is not None:
-            text = prompt.split(',')
+            text = [s.strip() for s in prompt.split(',')]
+            print(len(text))
+            colors = get_colors(len(text))
             detections = predictor.predict(image=image_pil, text=text)
-            logging.info(f"Detected {len(detections)} objects")
-            image = draw_detections_cv2(image, detections)
+            image = draw_detections_cv2(image, detections, colors=colors)
+            print(colors)
 
         image_jpeg = bytes(
             cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, IMAGE_QUALITY])[1]
