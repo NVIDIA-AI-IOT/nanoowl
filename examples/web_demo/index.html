@@ -1,0 +1,41 @@
+<html>
+<head>
+    <script type="text/javascript">
+
+        function jpeg_binary_to_base64(buffer){
+            var base64 = btoa(new Uint8Array(buffer).reduce(function (data, byte) {
+                return data + String.fromCharCode(byte);
+            }, ''));
+            return "data:image/jpeg;base64," + base64;
+        }
+
+        var ws = undefined
+        
+        ws = new WebSocket("ws://localhost:7860/ws");
+
+        ws.onopen = function () {
+            ws.send("start"); // this works
+            console.log("Connected.");
+        };
+
+        ws.onclose = function () {
+            console.log("Disconnected.");
+        };
+
+        ws.onmessage = function (event) {
+            var camera_image = document.getElementById("camera_image");
+            var reader = new FileReader();
+            reader.readAsDataURL(event.data);
+            reader.onloadend = function () {
+                console.log("Received message.");
+                camera_image.src = reader.result;
+            }
+        }
+
+    </script>
+</head>
+<body>
+    <h1>Hello, World!</h1>
+    <img id="camera_image" src="" alt="Camera Image" height="256"/>
+</body>
+</html>

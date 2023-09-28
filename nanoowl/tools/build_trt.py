@@ -7,7 +7,6 @@ from nanoowl.utils.predictor import (
     OwlVitImageEncoderModule,
     OwlVitTextEncoderModule
 )
-from nanoowl.utils.drawing import draw_detections_raw
 
 
 if __name__ == "__main__":
