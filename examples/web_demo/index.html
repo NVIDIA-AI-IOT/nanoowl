@@ -11,11 +11,26 @@
 
         var ws = undefined
         
-        ws = new WebSocket("ws://localhost:7860/ws");
+        console.log(location.host);
+
+        ws = new WebSocket("ws://" + location.host + "/ws");
 
         ws.onopen = function () {
-            ws.send("start"); // this works
+
             console.log("Connected.");
+
+            var prompt_input = document.getElementById("prompt_input")
+
+            function handle_prompt_change(event) {
+
+                console.log("Sending prompt: " + event.target.value);
+
+                if (typeof ws !== 'undefined') {
+                    ws.send("prompt:" + event.target.value);
+                }
+            }
+
+            prompt_input.oninput = handle_prompt_change;
         };
 
         ws.onclose = function () {
@@ -36,6 +51,8 @@
 </head>
 <body>
     <h1>Hello, World!</h1>
-    <img id="camera_image" src="" alt="Camera Image" height="256"/>
+    <input id="prompt_input" type="text" width="640"/>
+    <br/>
+    <img id="camera_image" src="" alt="Camera Image" width="640"/>
 </body>
 </html>
