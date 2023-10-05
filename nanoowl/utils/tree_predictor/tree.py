@@ -4,7 +4,7 @@ from enum import Enum
 from typing import List, Optional
 
 
-class Op(Enum):
+class TreeOp(Enum):
     ROOT = "ROOT"
     DETECT = "DETECT"
     CLASSIFY = "CLASSIFY"
@@ -12,7 +12,7 @@ class Op(Enum):
 
 @dataclass
 class _ParseTreeNode:
-    op: Op
+    op: TreeOp
     labels: List[str]
     children: List["_ParseTreeNode"] = field(default_factory=lambda: [])
     label_ids: Optional[List[int]] = None
@@ -53,27 +53,27 @@ def _assign_node_ids(root: _ParseTreeNode):
 
 def _parse_tree_prompt(prompt: str):
     
-    stack = [_ParseTreeNode(op=Op.ROOT, labels=[""], parent=None)]
+    stack = [_ParseTreeNode(op=TreeOp.ROOT, labels=[""], parent=None)]
 
     for ch in prompt:
         if ch == "[":
             parent = stack[-1]
-            child = _ParseTreeNode(op=Op.DETECT, labels=[""], parent=parent, parent_label_index=len(parent.labels) - 1)
+            child = _ParseTreeNode(op=TreeOp.DETECT, labels=[""], parent=parent, parent_label_index=len(parent.labels) - 1)
             parent.children.append(child)
             stack.append(child)
         elif ch == "(":
             parent = stack[-1]
-            child = _ParseTreeNode(op=Op.CLASSIFY, labels=[""], parent=parent, parent_label_index=len(parent.labels) - 1)
+            child = _ParseTreeNode(op=TreeOp.CLASSIFY, labels=[""], parent=parent, parent_label_index=len(parent.labels) - 1)
             parent.children.append(child)
             stack.append(child)
         elif ch == ",":
             stack[-1].labels.append("")
         elif ch == "]":
-            if stack[-1].op != Op.DETECT:
+            if stack[-1].op != TreeOp.DETECT:
                 raise RuntimeError("Prompt error.  Unexpected ].")
             stack.pop()
         elif ch == ")":
-            if stack[-1].op != Op.CLASSIFY:
+            if stack[-1].op != TreeOp.CLASSIFY:
                 raise RuntimeError("Prompt error.  Unexpected ).")
             stack.pop()
         else:
@@ -81,10 +81,10 @@ def _parse_tree_prompt(prompt: str):
     
     if len(stack) > 1:
 
-        if stack[-1].op == Op.DETECT:
+        if stack[-1].op == TreeOp.DETECT:
             raise RuntimeError("Prompt error.  Missing ].")
 
-        if stack[-1].op == Op.CLASSIFY:
+        if stack[-1].op == TreeOp.CLASSIFY:
             raise RuntimeError("Prompt error.  Missing ).")
 
     root = stack[-1]
@@ -95,17 +95,17 @@ def _parse_tree_prompt(prompt: str):
 
 
 @dataclass
-class GraphNode:
+class TreeNode:
     id: int
-    op: Op
+    op: TreeOp
     labels: List[str]
     input_buffer: int
     output_buffers: List[int]
 
 
 @dataclass
-class Graph:
-    nodes: List[GraphNode]
+class Tree:
+    nodes: List[TreeNode]
 
     @staticmethod
     def from_tree(root: _ParseTreeNode):
@@ -113,36 +113,36 @@ class Graph:
         _assign_node_ids(root)
 
         queue = root.children
-        graph_nodes = []
+        tree_nodes = []
         num_nodes = 0
         while queue:
-            tree_node = queue.pop(0)
-            graph_node = GraphNode(
+            parse_tree = queue.pop(0)
+            tree_node = TreeNode(
                 id=num_nodes,
-                op=tree_node.op,
-                labels=[l.strip() for l in tree_node.labels],
-                input_buffer=tree_node.parent.label_ids[tree_node.parent_label_index],
-                output_buffers=tree_node.label_ids
+                op=parse_tree.op,
+                labels=[l.strip() for l in parse_tree.labels],
+                input_buffer=parse_tree.parent.label_ids[parse_tree.parent_label_index],
+                output_buffers=parse_tree.label_ids
             )
             num_nodes += 1
-            graph_nodes.append(graph_node)
-            queue += tree_node.children
+            tree_nodes.append(tree_node)
+            queue += parse_tree.children
 
-        return Graph(nodes=graph_nodes)
+        return Tree(nodes=tree_nodes)
 
     @staticmethod
     def from_prompt(prompt: str):
-        return Graph.from_tree(_ParseTreeNode.from_prompt(prompt))
+        return Tree.from_tree(_ParseTreeNode.from_prompt(prompt))
 
     def print(self):
         for n in self.nodes:
             print(n)
 
     def detect_nodes(self):
-        return [n for n in self.nodes if n.op == Op.DETECT]
+        return [n for n in self.nodes if n.op == TreeOp.DETECT]
 
     def classify_nodes(self):
-        return [n for n in self.nodes if n.op == Op.CLASSIFY]
+        return [n for n in self.nodes if n.op == TreeOp.CLASSIFY]
 
     def get_node_for_output_buffer(self, output_buffer: int):
         return next(n for n in self.nodes if output_buffer in n.output_buffers)
@@ -153,7 +153,7 @@ class Graph:
     def find_nodes(self,
             input_buffer: Optional[int] = None,
             output_buffer: Optional[int] = None,
-            op: Optional[Op] = None
+            op: Optional[TreeOp] = None
         ):
 
         nodes = []

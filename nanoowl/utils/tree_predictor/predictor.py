@@ -1,5 +1,5 @@
-from .predictor import Predictor
-from .graph import Graph, Op
+from .model import TreeModel
+from .tree import Tree, TreeOp
 import PIL.Image
 import torch
 from dataclasses import dataclass
@@ -7,7 +7,7 @@ from typing import List, Tuple
 
 
 @dataclass
-class GraphDetection:
+class TreeDetection:
     box: Tuple[float, float, float, float]
     instance_id: int
     parent_instance_id: int
@@ -15,41 +15,41 @@ class GraphDetection:
     scores: List[float]
 
 
-class GraphPredictor:
+class TreePredictor:
     def __init__(self,
-            predictor: Predictor
+            model: TreeModel
         ):
-        self.predictor = predictor
-        self.graph = None
+        self.model = model
+        self.tree = None
         self._owl_text_encodes = {}
         self._clip_text_encodes = {}
 
-    def _compute_owl_text_encodes(self, graph):
+    def _compute_owl_text_encodes(self, tree):
         text_encodes = {}
-        for node in graph.nodes:
-            if node.op == Op.DETECT:
-                text_encodes[node.id] = self.predictor.owl_encode_text(node.labels)
+        for node in tree.nodes:
+            if node.op == TreeOp.DETECT:
+                text_encodes[node.id] = self.model.owl_encode_text(node.labels)
         return text_encodes
 
-    def _compute_clip_text_encodes(self, graph):
+    def _compute_clip_text_encodes(self, tree):
         text_encodes = {}
-        for node in graph.nodes:
-            if node.op == Op.CLASSIFY:
-                text_encodes[node.id] = self.predictor.clip_encode_text(node.labels)
+        for node in tree.nodes:
+            if node.op == TreeOp.CLASSIFY:
+                text_encodes[node.id] = self.model.clip_encode_text(node.labels)
         return text_encodes
 
-    def set_graph(self, graph: Graph):
-        self.graph = graph
-        self._owl_text_encodes = self._compute_owl_text_encodes(graph)
-        self._clip_text_encodes = self._compute_clip_text_encodes(graph)
+    def set_tree(self, tree: Tree):
+        self.tree = tree
+        self._owl_text_encodes = self._compute_owl_text_encodes(tree)
+        self._clip_text_encodes = self._compute_clip_text_encodes(tree)
 
     def set_prompt(self, prompt: str):
-        self.set_graph(Graph.from_prompt(prompt))
+        self.set_tree(Tree.from_prompt(prompt))
 
     def predict(self, image: PIL.Image, threshold=0.1, starting_rois=None):
-        graph = self.graph
+        tree = self.tree
 
-        image_tensor = self.predictor.preprocess_image(image)
+        image_tensor = self.model.preprocess_image(image)
         if starting_rois is None:
             starting_rois = torch.tensor([[0, 0, image.width, image.height]], dtype=image_tensor.dtype, device=image_tensor.device)
         else:
@@ -80,20 +80,20 @@ class GraphPredictor:
         while queue:
             cur_buf = queue.pop(0)
 
-            detect_nodes = graph.find_nodes(input_buffer=cur_buf, op=Op.DETECT)
+            detect_nodes = tree.find_nodes(input_buffer=cur_buf, op=TreeOp.DETECT)
             if len(detect_nodes) > 0 and cur_buf not in owl_image_encodings:
                 # TODO: use cached parent value for classify
-                owl_image_encodings[cur_buf] = self.predictor.owl_encode_rois(image_tensor, boxes[cur_buf])
+                owl_image_encodings[cur_buf] = self.model.owl_encode_rois(image_tensor, boxes[cur_buf])
 
-            classify_nodes = graph.find_nodes(input_buffer=cur_buf, op=Op.CLASSIFY)
+            classify_nodes = tree.find_nodes(input_buffer=cur_buf, op=TreeOp.CLASSIFY)
             if len(classify_nodes) > 0 and cur_buf not in clip_image_encodings:
                 #TODO: use cached parent value for classify
-                clip_image_encodings[cur_buf] = self.predictor.clip_encode_rois(image_tensor, boxes[cur_buf])
+                clip_image_encodings[cur_buf] = self.model.clip_encode_rois(image_tensor, boxes[cur_buf])
 
             for node in detect_nodes:
                 text_encodings = self._owl_text_encodes[node.id]
                 node_input = owl_image_encodings[node.input_buffer]
-                node_output = self.predictor.owl_decode(node_input, [text_encodings]*len(node_input.logit_shift), threshold=threshold)
+                node_output = self.model.owl_decode(node_input, [text_encodings]*len(node_input.logit_shift), threshold=threshold)
                 node_owl_outputs[node.id] = node_output
 
                 num_detections = len(node_output.labels)
@@ -112,7 +112,7 @@ class GraphPredictor:
             for node in classify_nodes:
                 text_encodings = self._clip_text_encodes[node.id]
                 node_input = clip_image_encodings[node.input_buffer]
-                node_output = self.predictor.clip_decode(node_input, text_encodings)
+                node_output = self.model.clip_decode(node_input, text_encodings)
                 node_clip_outputs[node.id] = node_output
                 parent_instance_ids_for_node = instance_ids[node.input_buffer]
 
@@ -146,7 +146,7 @@ class GraphPredictor:
                     detections[instance_id].labels.append(i)
                     detections[instance_id].scores.append(score)
                 else:
-                    detections[instance_id] = GraphDetection(
+                    detections[instance_id] = TreeDetection(
                         box=box,
                         instance_id=instance_id,
                         parent_instance_id=parent_instance_id,

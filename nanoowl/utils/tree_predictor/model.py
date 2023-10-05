@@ -154,7 +154,7 @@ class OwlDecodeOutput:
     roi_indices: torch.Tensor
 
 
-class Predictor(torch.nn.Module):
+class TreeModel(torch.nn.Module):
 
     def __init__(self,
             clip_model: str = "ViT-B/32",
@@ -301,8 +301,8 @@ class Predictor(torch.nn.Module):
 
         base_module = TRTModule(
             engine,
-            input_names=Predictor.owl_image_encoder_input_names(),
-            output_names=Predictor.owl_image_encoder_output_names()
+            input_names=TreeModel.owl_image_encoder_input_names(),
+            output_names=TreeModel.owl_image_encoder_output_names()
         )
 
         class Wrapper(torch.nn.Module):
@@ -396,8 +396,8 @@ class Predictor(torch.nn.Module):
 
         base_module = TRTModule(
             engine,
-            input_names=Predictor.clip_image_encoder_input_names(),
-            output_names=Predictor.clip_image_encoder_output_names()
+            input_names=TreeModel.clip_image_encoder_input_names(),
+            output_names=TreeModel.clip_image_encoder_output_names()
         )
 
         class Wrapper(torch.nn.Module):
