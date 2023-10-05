@@ -1,6 +1,7 @@
 import torch
 import PIL.Image
-from typing import List
+from typing import List, Tuple, Optional
+from nanoowl.image_preprocessor import ImagePreprocessor
 
 
 __all__ = [
@@ -8,7 +9,21 @@ __all__ = [
 ]
 
 
-class ClipPredictor(object):
+class ClipPredictor(torch.nn.Module):
+    
+    def __init__(self,
+            image_preprocessor: Optional[ImagePreprocessor] = None
+        ):
+        super().__init__()
+        
+        if image_preprocessor is None:
+            image_preprocessor = ImagePreprocessor()
+
+        self.image_preprocessor = image_preprocessor
+        
+    def preprocess_pil_image(self, image: PIL.Image.Image):
+        return self.image_preprocessor.preprocess_pil_image(image)
+
     def encode_text(self, text: List[str]):
         pass
 
@@ -27,5 +42,5 @@ class ClipPredictor(object):
     def image_size(self):
         pass
 
-    def predict(self, image: PIL.Image, text: List[str]):
+    def predict(self, image: PIL.Image.Image, text: List[str]):
         pass
