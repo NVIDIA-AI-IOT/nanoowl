@@ -1,3 +1,4 @@
 data
 *.egg-info
 *.pyc
+charmap.json.gz
