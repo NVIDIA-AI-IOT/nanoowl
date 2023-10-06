@@ -44,9 +44,11 @@ class ImagePreprocessor(torch.nn.Module):
     def forward(self, image: torch.Tensor, inplace: bool = False):
 
         if inplace:
-            return image.sub_(self.mean).div_(self.std)
-    
-        return (image - self.mean) / self.std
+            image = image.sub_(self.mean).div_(self.std)
+        else:
+            image = (image - self.mean) / self.std
+
+        return image
     
     @torch.no_grad()
     def preprocess_pil_image(self, image: PIL.Image.Image):
