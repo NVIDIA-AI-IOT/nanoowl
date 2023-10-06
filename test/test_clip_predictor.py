@@ -57,6 +57,6 @@ def test_clip_classify():
     text_output = clip_predictor.encode_text(["a frog", "an owl"])
     image_output = clip_predictor.encode_image(image_tensor)
 
-    classify_output = clip_predictor.classify(image_output, text_output)
+    classify_output = clip_predictor.decode(image_output, text_output)
 
     assert classify_output.labels[0] == 0

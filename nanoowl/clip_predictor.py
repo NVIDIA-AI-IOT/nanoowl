@@ -22,7 +22,7 @@ class ClipEncodeImageOutput:
 
 
 @dataclass
-class ClipClassifyOutput:
+class ClipDecodeOutput:
     labels: torch.Tensor
     scores: torch.Tensor
 
@@ -32,26 +32,15 @@ class ClipPredictor(torch.nn.Module):
     def __init__(self,
             model_name: str = "ViT-B/32",
             image_size: Tuple[int, int] = (224, 224),
-            image_preprocessor: Optional[ImagePreprocessor] = None,
             device: str = "cuda"
         ):
         super().__init__()
-
         self.device = device
-        
-        if image_preprocessor is None:
-            image_preprocessor = ImagePreprocessor()
-
-        self.image_preprocessor = image_preprocessor.to(device)
-
         self.clip_model, _ = clip.load(model_name, device)
         self.image_size = image_size
     
     def get_image_size(self):
         return self.image_size
-    
-    def preprocess_pil_image(self, image: PIL.Image.Image):
-        return self.image_preprocessor.preprocess_pil_image(image)
 
     def encode_text(self, text: List[str]) -> ClipEncodeTextOutput:
         text_tokens = clip.tokenize(text).to(self.device)
@@ -62,10 +51,10 @@ class ClipPredictor(torch.nn.Module):
         image_embeds = self.clip_model.encode_image(image)
         return ClipEncodeImageOutput(image_embeds=image_embeds)
     
-    def classify(self, 
+    def decode(self, 
             image_output: ClipEncodeImageOutput, 
             text_output: ClipEncodeTextOutput
-        ) -> ClipClassifyOutput:
+        ) -> ClipDecodeOutput:
 
         image_embeds = image_output.image_embeds
         text_embeds = text_output.text_embeds
@@ -77,7 +66,7 @@ class ClipPredictor(torch.nn.Module):
         probs = torch.softmax(logits_per_image, dim=-1)
         prob_max = probs.max(dim=-1)
         
-        return ClipClassifyOutput(
+        return ClipDecodeOutput(
             labels=prob_max.indices,
             scores=prob_max.values
         )
