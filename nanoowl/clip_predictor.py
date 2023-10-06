@@ -39,6 +39,9 @@ class ClipPredictor(torch.nn.Module):
         self.clip_model, _ = clip.load(model_name, device)
         self.image_size = image_size
     
+    def get_device(self):
+        return self.device
+        
     def get_image_size(self):
         return self.image_size
 

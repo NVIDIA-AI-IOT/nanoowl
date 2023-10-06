@@ -123,20 +123,26 @@ class OwlPredictor(torch.nn.Module):
 
         self.image_size = _owl_get_image_size(model_name)
         self.device = device
-        self.model = OwlViTForObjectDetection.from_pretrained(model_name).to(self._device).eval()
+        self.model = OwlViTForObjectDetection.from_pretrained(model_name).to(self.device).eval()
         self.processor = OwlViTProcessor.from_pretrained(model_name)
         self.patch_size = _owl_get_patch_size(model_name)
         self.num_patches_per_side = self.image_size // self.patch_size
-        self.box_bias = _owl_compute_box_bias(self.num_patches_per_side).to(self._device)
+        self.box_bias = _owl_compute_box_bias(self.num_patches_per_side).to(self.device)
         self.num_patches = (self.num_patches_per_side)**2
 
+    def get_num_patches(self):
+        return self.num_patches
+
+    def get_device(self):
+        return self.device
+        
     def get_image_size(self):
         return (self.image_size, self.image_size)
     
     def encode_text(self, text: List[str]) -> OwlEncodeTextOutput:
         text_input = self.processor(text=text, return_tensors="pt")
-        input_ids = text_input['input_ids'].to(self._device)
-        attention_mask = text_input['attention_mask'].to(self._device)
+        input_ids = text_input['input_ids'].to(self.device)
+        attention_mask = text_input['attention_mask'].to(self.device)
         text_outputs = self.model.owlvit.text_model(input_ids, attention_mask)
         text_embeds = text_outputs[1]
         text_embeds = self.model.owlvit.text_projection(text_embeds)
@@ -179,6 +185,8 @@ class OwlPredictor(torch.nn.Module):
             threshold: float = 0.1
         ) -> OwlDecodeOutput:
 
+        num_input_images = image_output.image_class_embeds.shape[0]
+
         image_class_embeds = image_output.image_class_embeds
         image_class_embeds = image_class_embeds / (torch.linalg.norm(image_class_embeds, dim=-1, keepdim=True) + 1e-6)
         query_embeds = text_output.text_embeds
@@ -193,12 +201,12 @@ class OwlPredictor(torch.nn.Module):
 
         mask = (scores > threshold)
 
-        input_indices = torch.arange(0, labels.shape[0], dtype=labels.dtype, device=labels.device)
-        input_indices = input_indices.repeat(1, scores_sigmoid.shape[-1])
+        input_indices = torch.arange(0, num_input_images, dtype=labels.dtype, device=labels.device)
+        input_indices = input_indices[:, None].repeat(1, self.num_patches)
 
         return OwlDecodeOutput(
             labels=labels[mask],
             scores=scores[mask],
-            boxes=image_output.pred_boxes[labels][mask],
+            boxes=image_output.pred_boxes[mask],
             input_indices=input_indices[mask]
         )
