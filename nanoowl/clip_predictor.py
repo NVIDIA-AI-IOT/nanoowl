@@ -1,8 +1,6 @@
 import torch
-import PIL.Image
 import clip
-from typing import List, Tuple, Optional
-from nanoowl.image_preprocessor import ImagePreprocessor
+from typing import List, Tuple
 from dataclasses import dataclass
 
 

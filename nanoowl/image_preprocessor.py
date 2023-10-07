@@ -1,8 +1,7 @@
 import torch
-import torch.nn.functional as F
 import PIL.Image
 import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple
 
 
 __all__ = [

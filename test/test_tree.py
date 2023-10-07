@@ -1,5 +1,5 @@
 import pytest
-from nanoowl.tree_predictor.tree import (
+from nanoowl.tree import (
     Tree,
     TreeOp
 )

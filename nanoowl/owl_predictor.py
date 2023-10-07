@@ -1,12 +1,7 @@
 import torch
-import PIL.Image
 import numpy as np
-from transformers.models.owlvit.modeling_owlvit import (
-    OwlViTForObjectDetection
-)
-from transformers.models.owlvit.processing_owlvit import (
-    OwlViTProcessor
-)
+from transformers.models.owlvit.modeling_owlvit import OwlViTForObjectDetection
+from transformers.models.owlvit.processing_owlvit import OwlViTProcessor
 from dataclasses import dataclass
 from typing import List
 

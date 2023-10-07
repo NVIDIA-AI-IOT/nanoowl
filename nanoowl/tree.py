@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import List, Mapping, Optional
+from typing import List, Optional
 
 
 __all__ = [
