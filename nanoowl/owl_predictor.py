@@ -89,6 +89,11 @@ def _owl_box_roi_to_box_global(boxes, rois):
 class OwlEncodeTextOutput:
     text_embeds: torch.Tensor
 
+    def slice(self, start_index, end_index):
+        return OwlEncodeTextOutput(
+            text_embeds=self.text_embeds[start_index:end_index]
+        )
+
 
 @dataclass
 class OwlEncodeImageOutput:

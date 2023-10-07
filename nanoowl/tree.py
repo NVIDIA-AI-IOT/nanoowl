@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Mapping
 
 
 __all__ = [
@@ -61,7 +61,17 @@ class Tree:
     def __init__(self, nodes, labels):
         self.nodes = nodes
         self.labels = labels
-
+        self._label_index_to_node_map = self._build_label_index_to_node_map()
+    
+    def _build_label_index_to_node_map(self) -> Mapping[int, "TreeNode"]:
+        label_to_node_map = {}
+        for node in self.nodes:
+            for label_index in node.outputs:
+                if label_index in label_to_node_map:
+                    raise RuntimeError("Duplicate output label.")
+                label_to_node_map[label_index] = node
+        return label_to_node_map
+    
     def to_dict(self):
         return {
             "nodes": [node.to_dict() for node in self.nodes],
@@ -151,3 +161,20 @@ class Tree:
     def from_json(tree_json: str) -> "Tree":
         tree_dict = json.loads(tree_json)
         return Tree.from_dict(tree_dict)
+    
+    def get_op_for_label_index(self, label_index: int):
+        if label_index not in self._label_index_to_node_map:
+            return None
+        return self._label_index_to_node_map[label_index].op
+    
+    def get_label_indices_with_op(self, op: TreeOp):
+        return [
+            index for index in range(len(self.labels))
+            if self.get_op_for_label_index(index) == op
+        ]
+    
+    def get_classify_label_indices(self):
+        return self.get_label_indices_with_op(TreeOp.CLASSIFY)
+    
+    def get_detect_label_indices(self):
+        return self.get_label_indices_with_op(TreeOp.DETECT)

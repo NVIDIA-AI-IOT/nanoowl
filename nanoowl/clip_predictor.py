@@ -13,6 +13,11 @@ __all__ = [
 class ClipEncodeTextOutput:
     text_embeds: torch.Tensor
 
+    def slice(self, start_index, end_index):
+        return ClipEncodeTextOutput(
+            text_embeds=self.text_embeds[start_index:end_index]
+        )
+
 
 @dataclass
 class ClipEncodeImageOutput:
