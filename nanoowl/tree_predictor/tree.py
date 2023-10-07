@@ -4,10 +4,9 @@ from typing import List, Mapping, Optional
 
 
 __all__ = [
-    "TreeNodeType",
-    "TreeBranch",
+    "TreeOp",
     "TreeNode",
-
+    "Tree"
 ]
 
 
