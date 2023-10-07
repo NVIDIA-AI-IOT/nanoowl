@@ -8,113 +8,100 @@ from .owl_predictor import OwlPredictor
 
 
 __all__ = [
-    "TreePredictor"
+    "TreeNodeType",
+    "TreeBranch",
+    "TreeNode",
+
 ]
 
 
+class TreeNodeType(Enum):
+    INPUT = "input"
+    DETECT = "detect"
+    CLASSIFY = "classify"
 
-class OpType(Enum):
-    DETECT = "DETECT"
-    CLASSIFY = "CLASSIFY"
+    def __str__(self):
+        return self.name
 
+class TreeBranch:
+    label: str
+    parent: "TreeNode"
+    nodes: List["TreeNode"]
+    global_id: int
 
-@dataclass
-class Topic:
-    graph: "Graph"
-    id: int
-    name: str
-
-
-@dataclass
-class Node:
-    graph: "Graph"
-    id: int
-    input_topics: List[int]
-    output_topics: List[int]
-
-
-@dataclass
-class LabelsNode(Node):
-    labels: List[str]
-
-    def new_label(self):
-        topic = self.graph.new_topic("")
-        self.labels.append("")
-        self.output_topics.append(topic)
-
-    def append_char_to_label(self, char: str):
-        self.labels
-
-@dataclass
-class DetectNode(Node):
-    labels: List[str]
-
-@dataclass
-class 
-
-class Graph:
-
-    def __init__(self):
+    def __init__(self, parent: "TreeNode", id: int, label: str = ""):
+        self.parent = parent
+        self.label = label
         self.nodes = []
-        self.topics = []
-        
-    def new_node(self, op: Op, input_topics: List[int], output_topics: List[int]) -> Node:
-        node = Node(
-            graph=self,
-            id=len(self.nodes), 
-            op=op, 
-            input_topics=input_topics, 
-            output_topics=output_topics
-        )
+        self.global_id = id
+
+    def add_node(self, type: TreeNodeType):
+        node = TreeNode(type=type, input=self)
         self.nodes.append(node)
         return node
+    
+    def extend_label(self, ch: str):
+        self.label += ch
 
-    def get_node(self, id: int) -> Node:
-        return self.nodes[id]
+    def as_dict(self):
+        return {
+            "label": self.label,
+            "nodes": [node.as_dict() for node in self.nodes],
+            "global_id": self.global_id
+        }
+    
 
-    def new_topic(self, name: str) -> Topic:
-        topic = Topic(
-            graph=self,
-            id=len(self.topics), 
-            name=name
-        )
-        self.topics.append(topic)
-        return topic
+class TreeNode:
+    type: TreeNodeType
+    input: Optional[TreeBranch]
+    branches: List[TreeBranch]
 
-    def get_topic(self, id: int) -> Topic:
-        return self.topics[id]
+    def __init__(self, type: TreeNodeType, input: Optional[TreeBranch] = None):
+        self.type = type
+        self.input = input
+        self.branches = []
 
+    def add_branch(self, id: int, label: str = "") -> TreeBranch:
+        branch = TreeBranch(self, id, label)
+        self.branches.append(branch)
+        return branch
+    
     @staticmethod
-    def parse_tree_prompt(prompt: str):
-
-        graph = Graph()
-        topic = graph.add_topic("input")
+    def from_prompt(prompt: str):
+        
+        global_branch_id = 0
+        branch = TreeNode(TreeNodeType.INPUT).add_branch(global_branch_id, "input")
 
         for ch in prompt:
+
             if ch == "[":
-                g
+                global_branch_id += 1
+                branch = branch.add_node(TreeNodeType.DETECT).add_branch(global_branch_id)
             elif ch == "]":
-                pass
+                if branch.parent.type != TreeNodeType.DETECT:
+                    raise RuntimeError("Unexpected ']'.")
+                if branch.parent.input is None:
+                    raise RuntimeError("Unexpected ']'.")
+                branch = branch.parent.input
             elif ch == "(":
-                pass
+                global_branch_id += 1
+                branch = branch.add_node(TreeNodeType.CLASSIFY).add_branch(global_branch_id)
             elif ch == ")":
-                pass
+                if branch.parent.type != TreeNodeType.CLASSIFY:
+                    raise RuntimeError("Unexpected ')'.")
+                if branch.parent.input is None:
+                    raise RuntimeError("Unexpected ')'.")
+                branch = branch.parent.input
             elif ch == ",":
-                pass
+                global_branch_id += 1
+                branch = branch.parent.add_branch(global_branch_id)
             else:
-                pass
-        pass
+                branch.extend_label(ch)
 
-# class TreePredictor(object):
-#     def __init__(self,
-#             clip_predictor: ClipPredictor,
-#             owl_predictor: OwlPredictor
-#         ):
-#         self.clip_predictor = clip_predictor
-#         self.owl_predictor = owl_predictor
-
-#     def encode_text(self, text: List[str]):
-#         pass
-
-#     def predict(self, image: PIL.Image, tree: Tree):
-#         pass
+        return branch.parent
+    
+    def as_dict(self):
+        return {
+            "type": str(self.type),
+            "branches": [branch.as_dict() for branch in self.branches]
+        }

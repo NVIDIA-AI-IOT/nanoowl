@@ -1,22 +1,20 @@
 import pytest
 from nanoowl.tree_predictor import (
     TreeNode,
-    TreeOpType,
-    TreeOp
+    TreeNodeType,
+    TreeBranch
 )
 
 
-def test_tree_node_branch_parse_child_nodes():
-    pass
+def test_tree_node_from_prompt():
 
+    root_node = TreeNode.from_prompt("[a face]")
 
-def test_tree_node_branch_parse_label_text():
-    assert TreeNode.parse_label_text("a") == "a"
-    assert TreeNode.parse_label_text("a(b,c)") == "a"
-    assert TreeNode.parse_label_text("a[b,c]") == "a"
-    assert TreeNode.parse_label_text("a[b(d,e),c]") == "a"
-    assert TreeNode.parse_label_text("a(b,c)") == "a"# throw error?
+    assert root_node.type == TreeNodeType.INPUT
+    assert root_node.branches[0].label == ""
+    assert root_node.branches[0].parent == root_node
 
+    detect_node = root_node.branches[0].nodes[0]
 
-def test_tree_node_branch_parse_output_branches():
-    pass
+    assert detect_node.branches[0].label == "a face"
+    assert detect_node.branches[0].parent == detect_node
