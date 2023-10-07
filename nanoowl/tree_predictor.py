@@ -10,12 +10,11 @@ from dataclasses import dataclass
 
 
 @dataclass
-class TreeDetection:
+class TreeRoi:
+    id: int
+    parent_id: int
     box: Tuple[float, float, float, float]
-    instance_id: int
-    parent_instance_id: int
     labels: List[int]
-    scores: List[float]
 
 
 class TreePredictor(torch.nn.Module):
@@ -50,5 +49,15 @@ class TreePredictor(torch.nn.Module):
     
     def predict(self, image: PIL.Image.Image, tree: Tree):
         
-        image = self.image_preprocessor(image)
+        image_tensor = self.image_preprocessor(image)
 
+        root_roi = TreeRoi(
+            id=0,
+            parent_id=-1,
+            box=(0, 0, image.width, image.height),
+            labels=[0]
+        )
+
+        rois = [root_roi]
+
+        return rois
