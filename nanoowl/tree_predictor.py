@@ -28,6 +28,12 @@ class TreeNode:
         self.input = input
         self.outputs = []
 
+    def to_dict(self):
+        return {
+            "op": str(self.op),
+            "input": self.input,
+            "outputs": self.outputs
+        }
 
 class Tree:
     nodes: List[TreeNode]
@@ -36,6 +42,12 @@ class Tree:
     def __init__(self, nodes, labels):
         self.nodes = nodes
         self.labels = labels
+
+    def to_dict(self):
+        return {
+            "nodes": [node.to_dict() for node in self.nodes],
+            "labels": self.labels
+        }
 
     @staticmethod
     def from_prompt(prompt: str):
