@@ -5,7 +5,7 @@ from nanoowl.tree_predictor import (
 )
 
 
-def test_tree_node_from_prompt():
+def test_tree_from_prompt():
 
     graph = Tree.from_prompt("[a face]")
 
@@ -37,3 +37,14 @@ def test_tree_node_from_prompt():
 
     with pytest.raises(RuntimeError):
         Tree.from_prompt("[a face]]")
+
+
+def test_tree_to_dict():
+    
+    tree = Tree.from_prompt("[a[b,c(d,e)]]")
+    tree_dict = tree.to_dict()
+    assert "nodes" in tree_dict
+    assert "labels" in tree_dict
+    assert len(tree_dict["nodes"]) == 3
+    assert len(tree_dict["labels"]) == 6
+

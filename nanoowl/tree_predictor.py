@@ -1,5 +1,6 @@
+import json
 from enum import Enum
-from typing import List, Mapping
+from typing import List, Mapping, Optional
 
 
 __all__ = [
@@ -23,10 +24,10 @@ class TreeNode:
     input: int
     outputs: List[int]
 
-    def __init__(self, op: TreeOp, input: int):
+    def __init__(self, op: TreeOp, input: int, outputs: Optional[List[int]] = None):
         self.op = op
         self.input = input
-        self.outputs = []
+        self.outputs = [] if outputs is None else outputs
 
     def to_dict(self):
         return {
@@ -35,9 +36,28 @@ class TreeNode:
             "outputs": self.outputs
         }
 
+    @staticmethod
+    def from_dict(node_dict: dict):
+
+        if "op" not in node_dict:
+            raise RuntimeError("Missing 'op' field.")
+
+        if "input" not in node_dict:
+            raise RuntimeError("Missing 'input' field.")
+        
+        if "outputs" not in node_dict:
+            raise RuntimeError("Missing 'input' field.")
+        
+        return TreeNode(
+            op=node_dict["op"],
+            input=node_dict["input"],
+            outputs=node_dict["outputs"]
+        )
+    
+
 class Tree:
     nodes: List[TreeNode]
-    labels: Mapping[int, str]
+    labels: List[str]
 
     def __init__(self, nodes, labels):
         self.nodes = nodes
@@ -55,7 +75,7 @@ class Tree:
         nodes = []
         node_stack = []
         label_index_stack = [0]
-        labels = {0: "image"}
+        labels = ["image"]
         label_index = 0
 
         for ch in prompt:
@@ -66,7 +86,7 @@ class Tree:
                 node.outputs.append(label_index)
                 node_stack.append(node)
                 label_index_stack.append(label_index)
-                labels[label_index] = ""
+                labels.append("")
                 nodes.append(node)
             elif ch == "]":
                 if len(node_stack) == 0:
@@ -81,7 +101,7 @@ class Tree:
                 node.outputs.append(label_index)
                 node_stack.append(node)
                 label_index_stack.append(label_index)
-                labels[label_index] = ""
+                labels.append("")
                 nodes.append(node)
             elif ch == ")":
                 if len(node_stack) == 0:
@@ -95,7 +115,7 @@ class Tree:
                 label_index = label_index + 1
                 label_index_stack.append(label_index)
                 node_stack[-1].outputs.append(label_index)
-                labels[label_index] = ""
+                labels.append("")
             else:
                 labels[label_index_stack[-1]] += ch
 
@@ -105,8 +125,30 @@ class Tree:
             if node_stack[-1].op == TreeOp.CLASSIFY:
                 raise RuntimeError("Missing ')'.")
             
-        labels = {k: v.strip() for k, v in labels.items()}
+        labels = [label.strip() for label in labels]
 
         graph = Tree(nodes=nodes, labels=labels)
 
         return graph
+    
+    def to_json(self, indent: Optional[int] = None) -> str:
+        return json.dumps(self.to_dict(), indent=indent)
+    
+    @staticmethod
+    def from_dict(tree_dict: dict) -> "Tree":
+
+        if "nodes" not in tree_dict:
+            raise RuntimeError("Missing 'nodes' field.")
+        
+        if "labels" not in tree_dict:
+            raise RuntimeError("Missing 'labels' field.")
+        
+        nodes = [TreeNode.from_dict(node_dict) for node_dict in tree_dict["nodes"]]
+        labels = tree_dict["labels"]
+
+        return Tree(nodes=nodes, labels=labels)
+
+    @staticmethod
+    def from_json(tree_json: str) -> "Tree":
+        tree_dict = json.loads(tree_json)
+        return Tree.from_dict(tree_dict)
