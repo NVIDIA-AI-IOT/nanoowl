@@ -1,20 +1,39 @@
 import pytest
 from nanoowl.tree_predictor import (
-    TreeNode,
-    TreeNodeType,
-    TreeBranch
+    Tree,
+    TreeOp
 )
 
 
 def test_tree_node_from_prompt():
 
-    root_node = TreeNode.from_prompt("[a face]")
+    graph = Tree.from_prompt("[a face]")
 
-    assert root_node.type == TreeNodeType.INPUT
-    assert root_node.branches[0].label == ""
-    assert root_node.branches[0].parent == root_node
+    assert len(graph.nodes) == 1
+    assert len(graph.labels) == 2
+    assert graph.labels[0] == "image"
+    assert graph.labels[1] == "a face"
+    assert graph.nodes[0].op == TreeOp.DETECT
 
-    detect_node = root_node.branches[0].nodes[0]
+    graph = Tree.from_prompt("[a face](a dog, a cat)")
 
-    assert detect_node.branches[0].label == "a face"
-    assert detect_node.branches[0].parent == detect_node
+    assert len(graph.nodes) == 2
+    assert len(graph.labels) == 4
+    assert graph.labels[0] == "image"
+    assert graph.labels[1] == "a face"
+    assert graph.labels[2] == "a dog"
+    assert graph.labels[3] == "a cat"
+    assert graph.nodes[0].op == TreeOp.DETECT
+    assert graph.nodes[1].op == TreeOp.CLASSIFY
+
+    with pytest.raises(RuntimeError):
+        Tree.from_prompt("]a face]")
+
+    with pytest.raises(RuntimeError):
+        Tree.from_prompt("[a face")
+
+    with pytest.raises(RuntimeError):
+        Tree.from_prompt("[a face)")
+
+    with pytest.raises(RuntimeError):
+        Tree.from_prompt("[a face]]")

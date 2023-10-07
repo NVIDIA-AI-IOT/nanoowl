@@ -1,10 +1,5 @@
-import torch
-import PIL.Image
 from enum import Enum
-from typing import List, Optional, Tuple
-from dataclasses import dataclass, field
-from .clip_predictor import ClipPredictor
-from .owl_predictor import OwlPredictor
+from typing import List, Mapping
 
 
 __all__ = [
@@ -15,93 +10,91 @@ __all__ = [
 ]
 
 
-class TreeNodeType(Enum):
-    INPUT = "input"
+class TreeOp(Enum):
     DETECT = "detect"
     CLASSIFY = "classify"
 
-    def __str__(self):
-        return self.name
+    def __str__(self) -> str:
+        return str(self.value)
 
-class TreeBranch:
-    label: str
-    parent: "TreeNode"
-    nodes: List["TreeNode"]
-    global_id: int
-
-    def __init__(self, parent: "TreeNode", id: int, label: str = ""):
-        self.parent = parent
-        self.label = label
-        self.nodes = []
-        self.global_id = id
-
-    def add_node(self, type: TreeNodeType):
-        node = TreeNode(type=type, input=self)
-        self.nodes.append(node)
-        return node
-    
-    def extend_label(self, ch: str):
-        self.label += ch
-
-    def as_dict(self):
-        return {
-            "label": self.label,
-            "nodes": [node.as_dict() for node in self.nodes],
-            "global_id": self.global_id
-        }
-    
 
 class TreeNode:
-    type: TreeNodeType
-    input: Optional[TreeBranch]
-    branches: List[TreeBranch]
+    op: TreeOp
+    input: int
+    outputs: List[int]
 
-    def __init__(self, type: TreeNodeType, input: Optional[TreeBranch] = None):
-        self.type = type
+    def __init__(self, op: TreeOp, input: int):
+        self.op = op
         self.input = input
-        self.branches = []
+        self.outputs = []
 
-    def add_branch(self, id: int, label: str = "") -> TreeBranch:
-        branch = TreeBranch(self, id, label)
-        self.branches.append(branch)
-        return branch
-    
+
+class Tree:
+    nodes: List[TreeNode]
+    labels: Mapping[int, str]
+
+    def __init__(self, nodes, labels):
+        self.nodes = nodes
+        self.labels = labels
+
     @staticmethod
     def from_prompt(prompt: str):
-        
-        global_branch_id = 0
-        branch = TreeNode(TreeNodeType.INPUT).add_branch(global_branch_id, "input")
+
+        nodes = []
+        node_stack = []
+        label_index_stack = [0]
+        labels = {0: "image"}
+        label_index = 0
 
         for ch in prompt:
 
             if ch == "[":
-                global_branch_id += 1
-                branch = branch.add_node(TreeNodeType.DETECT).add_branch(global_branch_id)
+                label_index += 1
+                node = TreeNode(op=TreeOp.DETECT, input=label_index_stack[-1])
+                node.outputs.append(label_index)
+                node_stack.append(node)
+                label_index_stack.append(label_index)
+                labels[label_index] = ""
+                nodes.append(node)
             elif ch == "]":
-                if branch.parent.type != TreeNodeType.DETECT:
+                if len(node_stack) == 0:
                     raise RuntimeError("Unexpected ']'.")
-                if branch.parent.input is None:
+                node = node_stack.pop()
+                if node.op != TreeOp.DETECT:
                     raise RuntimeError("Unexpected ']'.")
-                branch = branch.parent.input
+                label_index_stack.pop()
             elif ch == "(":
-                global_branch_id += 1
-                branch = branch.add_node(TreeNodeType.CLASSIFY).add_branch(global_branch_id)
+                label_index = label_index + 1
+                node = TreeNode(op=TreeOp.CLASSIFY, input=label_index_stack[-1])
+                node.outputs.append(label_index)
+                node_stack.append(node)
+                label_index_stack.append(label_index)
+                labels[label_index] = ""
+                nodes.append(node)
             elif ch == ")":
-                if branch.parent.type != TreeNodeType.CLASSIFY:
+                if len(node_stack) == 0:
                     raise RuntimeError("Unexpected ')'.")
-                if branch.parent.input is None:
+                node = node_stack.pop()
+                if node.op != TreeOp.CLASSIFY:
                     raise RuntimeError("Unexpected ')'.")
-                branch = branch.parent.input
+                label_index_stack.pop()
             elif ch == ",":
-                global_branch_id += 1
-                branch = branch.parent.add_branch(global_branch_id)
+                label_index_stack.pop()
+                label_index = label_index + 1
+                label_index_stack.append(label_index)
+                node_stack[-1].outputs.append(label_index)
+                labels[label_index] = ""
             else:
-                branch.extend_label(ch)
+                labels[label_index_stack[-1]] += ch
 
-        return branch.parent
-    
-    def as_dict(self):
-        return {
-            "type": str(self.type),
-            "branches": [branch.as_dict() for branch in self.branches]
-        }
+        if len(node_stack) > 0:
+            if node_stack[-1].op == TreeOp.DETECT:
+                raise RuntimeError("Missing ']'.")
+            if node_stack[-1].op == TreeOp.CLASSIFY:
+                raise RuntimeError("Missing ')'.")
+            
+        labels = {k: v.strip() for k, v in labels.items()}
+
+        graph = Tree(nodes=nodes, labels=labels)
+
+        return graph
