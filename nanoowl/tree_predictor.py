@@ -65,7 +65,6 @@ class TreePredictor(torch.nn.Module):
             owl_text_encodings = self.encode_owl_labels(tree)
         
         image_tensor = self.image_preprocessor.preprocess_pil_image(image)
-
         boxes = {
             0: torch.tensor([[0, 0, image.width, image.height]], dtype=image_tensor.dtype, device=image_tensor.device)
         }
@@ -95,6 +94,7 @@ class TreePredictor(torch.nn.Module):
             # Run OWL image encode if required
             if len(detect_nodes) > 0 and label_index not in owl_image_encodings:
                 owl_image_encodings[label_index] = self.owl_predictor.encode_rois(image_tensor, boxes[label_index])
+                
 
             # Run CLIP image encode if required
             if len(classify_nodes) > 0 and label_index not in clip_image_encodings:
@@ -187,6 +187,5 @@ class TreePredictor(torch.nn.Module):
                         labels=[i],
                         scores=[score]
                     )
-
 
         return detections

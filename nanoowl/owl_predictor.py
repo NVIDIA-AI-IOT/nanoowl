@@ -5,7 +5,7 @@ from transformers.models.owlvit.modeling_owlvit import OwlViTForObjectDetection
 from transformers.models.owlvit.processing_owlvit import OwlViTProcessor
 from dataclasses import dataclass
 from typing import List, Optional
-
+from .profiling_utils import torch_timeit_sync
 
 __all__ = [
     "OwlPredictor"
@@ -197,7 +197,6 @@ class OwlPredictor(torch.nn.Module):
 
     def encode_image(self, image: torch.Tensor) -> OwlEncodeImageOutput:
         if self.image_encoder_engine is not None:
-            print("trt")
             return self.encode_image_trt(image)
         else:
             return self.encode_image_torch(image)
@@ -235,7 +234,9 @@ class OwlPredictor(torch.nn.Module):
         return roi_images, rois
     
     def encode_rois(self, image: torch.Tensor, rois: torch.Tensor, pad_square: bool = True):
+        # with torch_timeit_sync("extract rois"):
         roi_images, rois = self.extract_rois(image, rois, pad_square)
+        # with torch_timeit_sync("encode images"):
         output = self.encode_image(roi_images)
         pred_boxes = _owl_box_roi_to_box_global(output.pred_boxes, rois[:, None, :])
         output.pred_boxes = pred_boxes
@@ -293,7 +294,7 @@ class OwlPredictor(torch.nn.Module):
             output_path: str,
             use_dynamic_axes: bool = True,
             batch_size: int = 1,
-            onnx_opset=14
+            onnx_opset=17
         ):
         
         class TempModule(torch.nn.Module):
@@ -368,6 +369,7 @@ class OwlPredictor(torch.nn.Module):
                 for start_index in range(0, b, self.max_batch_size):
                     end_index = min(b, start_index + self.max_batch_size)
                     image_slice = image[start_index:end_index]
+                    # with torch_timeit_sync("run_engine"):
                     output = self.base_module(image_slice)
                     results.append(
                         output

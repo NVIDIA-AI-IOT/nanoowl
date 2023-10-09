@@ -108,14 +108,16 @@ async def detection_loop(app: web.Application):
 
         if prompt_data is not None:
             prompt_data_local = prompt_data
+            t0 = time.perf_counter_ns()
             detections = predictor.predict(
                 image_pil,
                 tree=prompt_data_local['tree'],
                 clip_text_encodings=prompt_data_local['clip_encodings'],
                 owl_text_encodings=prompt_data_local['owl_encodings']
             )
+            t1 = time.perf_counter_ns()
+            dt = (t1 - t0) / 1e9
             tree = prompt_data_local['tree']
-            print(tree.labels)
             image = draw_tree_detections(image, detections, prompt_data['tree'])
 
         image_jpeg = bytes(
