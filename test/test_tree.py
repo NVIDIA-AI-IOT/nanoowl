@@ -48,3 +48,10 @@ def test_tree_to_dict():
     assert len(tree_dict["nodes"]) == 3
     assert len(tree_dict["labels"]) == 6
 
+
+
+def test_tree_from_prompt():
+
+    tree = Tree.from_prompt("(office, home, outdoors, gym)")
+
+    print(tree)

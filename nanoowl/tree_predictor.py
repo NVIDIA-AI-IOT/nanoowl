@@ -33,6 +33,8 @@ class TreePredictor(torch.nn.Module):
 
     def encode_clip_labels(self, tree: Tree) -> Dict[int, ClipEncodeTextOutput]:
         label_indices = tree.get_classify_label_indices()
+        if len(label_indices) == 0:
+            return {}
         labels = [tree.labels[index] for index in label_indices]
         text_encodings = self.clip_predictor.encode_text(labels)
         label_encodings = {}
@@ -42,6 +44,8 @@ class TreePredictor(torch.nn.Module):
     
     def encode_owl_labels(self, tree: Tree) -> Dict[int, OwlEncodeTextOutput]:
         label_indices = tree.get_detect_label_indices()
+        if len(label_indices) == 0:
+            return {}
         labels = [tree.labels[index] for index in label_indices]
         text_encodings = self.owl_predictor.encode_text(labels)
         label_encodings = {}

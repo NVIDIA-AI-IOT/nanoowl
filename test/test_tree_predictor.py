@@ -54,3 +54,15 @@ def test_tree_predictor_predict():
     detections = predictor.predict(image, tree)
 
     
+def test_tree_predictor_predict():
+
+    predictor = TreePredictor()
+    tree = Tree.from_prompt("(outdoors, indoors)")
+
+
+    image = PIL.Image.open("assets/owl_glove.jpg")
+
+    detections = predictor.predict(image, tree)
+
+    print(detections)
+    

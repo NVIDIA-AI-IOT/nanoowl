@@ -118,7 +118,7 @@ async def detection_loop(app: web.Application):
             t1 = time.perf_counter_ns()
             dt = (t1 - t0) / 1e9
             tree = prompt_data_local['tree']
-            image = draw_tree_detections(image, detections, prompt_data['tree'])
+            image = draw_tree_detections(image, detections, prompt_data_local['tree'])
 
         image_jpeg = bytes(
             cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, IMAGE_QUALITY])[1]
