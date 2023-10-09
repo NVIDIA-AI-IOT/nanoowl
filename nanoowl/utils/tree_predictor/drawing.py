@@ -2,7 +2,7 @@ import PIL.Image
 import PIL.ImageDraw
 import cv2
 from .tree import Tree
-from .predictor import TreeDetection
+from .tree_predictor import TreeDetection
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import List
@@ -25,8 +25,8 @@ def draw_tree_detections(image, detections: List[TreeDetection], tree: Tree, dra
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.75
     colors = get_colors(num_colors)
-    label_map = tree.get_buffer_label_map()
-    label_depths = tree.get_buffer_depth_map()
+    label_map = tree.get_label_map()
+    label_depths = tree.get_label_depth_map()
     for detection in detections.values():
         box = [int(x) for x in detection.box]
         pt0 = (box[0], box[1])

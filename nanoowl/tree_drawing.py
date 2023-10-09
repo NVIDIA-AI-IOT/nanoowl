@@ -25,8 +25,8 @@ def draw_tree_detections(image, detections: List[TreeDetection], tree: Tree, dra
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.75
     colors = get_colors(num_colors)
-    label_map = tree.get_buffer_label_map()
-    label_depths = tree.get_buffer_depth_map()
+    label_map = tree.get_label_map()
+    label_depths = tree.get_label_depth_map()
     for detection in detections.values():
         box = [int(x) for x in detection.box]
         pt0 = (box[0], box[1])
@@ -44,19 +44,17 @@ def draw_tree_detections(image, detections: List[TreeDetection], tree: Tree, dra
             offset_x = 0
             for label in detection.labels:
                 label_text = label_map[label]
-                if label_text is not None:
-                    label_text = label_text[2]
-                    cv2.putText(
-                        image,
-                        label_text,
-                        (box[0] + offset_x, box[1] + offset_y),
-                        font,
-                        font_scale,
-                        colors[label % num_colors],
-                        2,# thickness
-                        cv2.LINE_AA
-                    )
-                    offset_y += 18
+                cv2.putText(
+                    image,
+                    label_text,
+                    (box[0] + offset_x, box[1] + offset_y),
+                    font,
+                    font_scale,
+                    colors[label % num_colors],
+                    2,# thickness
+                    cv2.LINE_AA
+                )
+                offset_y += 18
     if is_pil:
         image = PIL.Image.fromarray(image)
     return image

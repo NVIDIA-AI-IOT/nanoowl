@@ -97,7 +97,7 @@ class TreePredictor(torch.nn.Module):
                 owl_image_encodings[label_index] = self.owl_predictor.encode_rois(image_tensor, boxes[label_index])
 
             # Run CLIP image encode if required
-            if len(detect_nodes) > 0 and label_index not in clip_image_encodings:
+            if len(classify_nodes) > 0 and label_index not in clip_image_encodings:
                 clip_image_encodings[label_index] = self.clip_predictor.encode_rois(image_tensor, boxes[label_index])
 
             # Decode detect nodes
@@ -135,7 +135,7 @@ class TreePredictor(torch.nn.Module):
             for node in classify_nodes:
 
                 if node.input not in clip_image_encodings:
-                    raise RuntimeError("Missing owl image encodings for node.")
+                    raise RuntimeError("Missing clip image encodings for node.")
 
                 clip_text_encodings_for_node = ClipEncodeTextOutput(
                     text_embeds=torch.cat([

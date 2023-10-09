@@ -138,6 +138,7 @@ class OwlPredictor(torch.nn.Module):
                 torch.linspace(0., 1., self.image_size)
             )
         ).to(self.device).float()
+        self.image_encoder_engine = None
         if image_encoder_engine is not None:
             image_encoder_engine = OwlPredictor.load_image_encoder_engine(image_encoder_engine, image_encoder_engine_max_batch_size)
         self.image_encoder_engine = image_encoder_engine
@@ -196,6 +197,7 @@ class OwlPredictor(torch.nn.Module):
 
     def encode_image(self, image: torch.Tensor) -> OwlEncodeImageOutput:
         if self.image_encoder_engine is not None:
+            print("trt")
             return self.encode_image_trt(image)
         else:
             return self.encode_image_torch(image)

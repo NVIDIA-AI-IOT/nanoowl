@@ -7,23 +7,23 @@ import time
 import PIL.Image
 import matplotlib.pyplot as plt
 from typing import List
-from nanoowl.utils.tree_predictor import (
-    TreePredictor, TreeModel, draw_tree_detections, Tree
+from nanoowl.tree import Tree
+from nanoowl.tree_predictor import (
+    TreePredictor
 )
+from nanoowl.tree_drawing import draw_tree_detections
+from nanoowl.owl_predictor import OwlPredictor
 
 CAMERA_DEVICE = 0
 IMAGE_QUALITY = 50
-# MODEL_NAME = "google/owlvit-base-patch32"
-IMAGE_ENCODER_ENGINE = "../../data/owlvit-base-patch32-image-encoder.engine"
 
 predictor = TreePredictor(
-    model=TreeModel(
-        owl_image_encoder_engine="../../data/owl_image_encoder.engine"
+    owl_predictor=OwlPredictor(
+        image_encoder_engine="../../data/owl_image_encoder.engine"
     )
 )
 
-prompt: str = ""
-lock = asyncio.Lock()
+prompt_data = None
 
 def get_colors(count: int):
     cmap = plt.cm.get_cmap("rainbow", count)
@@ -47,7 +47,7 @@ async def handle_index_get(request: web.Request):
 
 async def websocket_handler(request):
 
-    global prompt
+    global prompt_data
 
     ws = web.WebSocketResponse()
 
@@ -65,7 +65,13 @@ async def websocket_handler(request):
                 logging.info("Received prompt: " + prompt)
                 try:
                     tree = Tree.from_prompt(prompt)
-                    predictor.set_tree(tree)
+                    clip_encodings = predictor.encode_clip_labels(tree)
+                    owl_encodings = predictor.encode_owl_labels(tree)
+                    prompt_data = {
+                        "tree": tree,
+                        "clip_encodings": clip_encodings,
+                        "owl_encodings": owl_encodings
+                    }
                     logging.info("Set prompt: " + prompt)
                 except Exception as e:
                     print(e)
@@ -87,7 +93,7 @@ async def detection_loop(app: web.Application):
 
     logging.info("Opening camera.")
 
-    camera = cv2.VideoCapture(CAMERA_DEVICE)[]
+    camera = cv2.VideoCapture(CAMERA_DEVICE)
 
     logging.info("Loading predictor.")
 
@@ -100,12 +106,17 @@ async def detection_loop(app: web.Application):
 
         image_pil = cv2_to_pil(image)
 
-        if predictor.tree is not None:
-            try:
-                detections = predictor.predict(image_pil)
-                image = draw_tree_detections(image, detections, predictor.tree)
-            except Exception as e:
-                print(e) #TODO: handle async graph better
+        if prompt_data is not None:
+            prompt_data_local = prompt_data
+            detections = predictor.predict(
+                image_pil,
+                tree=prompt_data_local['tree'],
+                clip_text_encodings=prompt_data_local['clip_encodings'],
+                owl_text_encodings=prompt_data_local['owl_encodings']
+            )
+            tree = prompt_data_local['tree']
+            print(tree.labels)
+            image = draw_tree_detections(image, detections, prompt_data['tree'])
 
         image_jpeg = bytes(
             cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, IMAGE_QUALITY])[1]

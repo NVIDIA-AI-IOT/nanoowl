@@ -189,3 +189,23 @@ class Tree:
 
     def find_classify_nodes_with_input(self, input_index: int):
         return [n for n in self.find_nodes_with_input(input_index) if n.op == TreeOp.CLASSIFY]
+
+    def get_label_depth(self, index):
+        depth = 0
+        while index in self._label_index_to_node_map:
+            depth += 1
+            node = self._label_index_to_node_map[index]
+            index = node.input
+        return depth
+
+    def get_label_depth_map(self):
+        depths = {}
+        for i in range(len(self.labels)):
+            depths[i] = self.get_label_depth(i)
+        return depths
+
+    def get_label_map(self):
+        label_map = {}
+        for i in range(len(self.labels)):
+            label_map[i] = self.labels[i]
+        return label_map
