@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class TreeRoi:
+class TreeDetection:
     id: int
     parent_id: int
     box: Tuple[float, float, float, float]
@@ -23,14 +23,15 @@ class TreePredictor(torch.nn.Module):
     def __init__(self,
             owl_predictor: Optional[OwlPredictor] = None,
             clip_predictor: Optional[ClipPredictor] = None,
-            image_preprocessor: Optional[ImagePreprocessor] = None
+            image_preprocessor: Optional[ImagePreprocessor] = None,
+            device: str = "cuda"
         ):
         super().__init__()
         self.owl_predictor = OwlPredictor() if owl_predictor is None else owl_predictor
         self.clip_predictor = ClipPredictor() if clip_predictor is None else clip_predictor
-        self.image_preprocessor = ImagePreprocessor() if image_preprocessor is None else image_preprocessor
+        self.image_preprocessor = ImagePreprocessor().to(device).eval() if image_preprocessor is None else image_preprocessor
 
-    def encode_clip_labels(self, tree: Tree) -> Mapping[int, ClipEncodeTextOutput]:
+    def encode_clip_labels(self, tree: Tree) -> Dict[int, ClipEncodeTextOutput]:
         label_indices = tree.get_classify_label_indices()
         labels = [tree.labels[index] for index in label_indices]
         text_encodings = self.clip_predictor.encode_text(labels)
@@ -39,7 +40,7 @@ class TreePredictor(torch.nn.Module):
             label_encodings[label_indices[i]] = text_encodings.slice(i, i+1)
         return label_encodings
     
-    def encode_owl_labels(self, tree: Tree) -> Mapping[int, OwlEncodeTextOutput]:
+    def encode_owl_labels(self, tree: Tree) -> Dict[int, OwlEncodeTextOutput]:
         label_indices = tree.get_detect_label_indices()
         labels = [tree.labels[index] for index in label_indices]
         text_encodings = self.owl_predictor.encode_text(labels)
@@ -48,9 +49,22 @@ class TreePredictor(torch.nn.Module):
             label_encodings[label_indices[i]] = text_encodings.slice(i, i+1)
         return label_encodings
     
-    def predict(self, image: PIL.Image.Image, tree: Tree, threshold: float = 0.1):
+    @torch.no_grad()
+    def predict(self, 
+            image: PIL.Image.Image, 
+            tree: Tree, 
+            threshold: float = 0.1,
+            clip_text_encodings: Optional[Dict[int, ClipEncodeTextOutput]] = None,
+            owl_text_encodings: Optional[Dict[int, OwlEncodeTextOutput]] = None
+        ):
+
+        if clip_text_encodings is None:
+            clip_text_encodings = self.encode_clip_labels(tree)
         
-        image_tensor = self.image_preprocessor(image)
+        if owl_text_encodings is None:
+            owl_text_encodings = self.encode_owl_labels(tree)
+        
+        image_tensor = self.image_preprocessor.preprocess_pil_image(image)
 
         boxes = {
             0: torch.tensor([[0, 0, image.width, image.height]], dtype=image_tensor.dtype, device=image_tensor.device)
@@ -89,15 +103,19 @@ class TreePredictor(torch.nn.Module):
             # Decode detect nodes
             for node in detect_nodes:
 
-                if node.owl_text_encodings is None:
-                    raise RuntimeError("Missing owl text encodings for node.")
-
                 if node.input not in owl_image_encodings:
                     raise RuntimeError("Missing owl image encodings for node.")
 
+                # gather encodings
+                owl_text_encodings_for_node = OwlEncodeTextOutput(
+                    text_embeds=torch.cat([
+                        owl_text_encodings[i].text_embeds for i in node.outputs
+                    ], dim=0)
+                )
+                
                 owl_node_output = self.owl_predictor.decode(
                     owl_image_encodings[node.input], 
-                    node.owl_text_encodings, 
+                    owl_text_encodings_for_node, 
                     threshold=threshold
                 )
 
@@ -116,15 +134,18 @@ class TreePredictor(torch.nn.Module):
 
             for node in classify_nodes:
 
-                if node.clip_text_encodings is None:
-                    raise RuntimeError("Missing clip text encodings for node.")
-
                 if node.input not in clip_image_encodings:
                     raise RuntimeError("Missing owl image encodings for node.")
 
+                clip_text_encodings_for_node = ClipEncodeTextOutput(
+                    text_embeds=torch.cat([
+                        clip_text_encodings[i].text_embeds for i in node.outputs
+                    ], dim=0)
+                )
+
                 clip_node_output = self.clip_predictor.decode(
                     clip_image_encodings[node.input], 
-                    node.clip_text_encodings
+                    clip_text_encodings_for_node
                 )
 
                 parent_instance_ids_for_node = instance_ids[node.input]
@@ -148,18 +169,18 @@ class TreePredictor(torch.nn.Module):
                         queue.append(buf)
 
         # Fill outputs
-        output_rois: Dict[int, TreeRoi] = {}
+        detections: Dict[int, TreeDetection] = {}
         for i in boxes.keys():
             for box, score, instance_id, parent_instance_id in zip(boxes[i], scores[i], instance_ids[i], parent_instance_ids[i]):
                 instance_id = int(instance_id)
                 score = float(score)
                 box = box.tolist()
                 parent_instance_id = int(parent_instance_id)
-                if instance_id in output_rois:
-                    output_rois[instance_id].labels.append(i)
-                    output_rois[instance_id].scores.append(score)
+                if instance_id in detections:
+                    detections[instance_id].labels.append(i)
+                    detections[instance_id].scores.append(score)
                 else:
-                    output_rois[instance_id] = TreeRoi(
+                    detections[instance_id] = TreeDetection(
                         id=instance_id,
                         parent_id=parent_instance_id,
                         box=box,
@@ -168,4 +189,4 @@ class TreePredictor(torch.nn.Module):
                     )
 
 
-        return output_rois
+        return detections

@@ -1,4 +1,5 @@
 import pytest
+import PIL.Image
 from nanoowl.tree_predictor import TreePredictor
 from nanoowl.tree import Tree
 
@@ -40,3 +41,16 @@ def test_encode_clip_owl_labels_mixed():
 
     assert len(owl_text_encodings) == 3
     assert len(clip_text_encodings) == 2
+
+
+def test_tree_predictor_predict():
+
+    predictor = TreePredictor()
+    tree = Tree.from_prompt("[an owl]")
+
+
+    image = PIL.Image.open("assets/owl_glove.jpg")
+
+    detections = predictor.predict(image, tree)
+
+    

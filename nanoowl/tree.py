@@ -24,8 +24,6 @@ class TreeNode:
     op: TreeOp
     input: int
     outputs: List[int]
-    owl_text_encodings: Optional[OwlEncodeTextOutput]
-    clip_text_encodings: Optional[ClipEncodeTextOutput]
 
     def __init__(self, op: TreeOp, input: int, outputs: Optional[List[int]] = None):
         self.op = op
