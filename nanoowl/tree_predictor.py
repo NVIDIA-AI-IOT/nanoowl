@@ -1,11 +1,11 @@
-from .tree import Tree
-from .owl_predictor import OwlPredictor, OwlEncodeTextOutput
-from .clip_predictor import ClipPredictor, ClipEncodeTextOutput
+from .tree import Tree, TreeOp
+from .owl_predictor import OwlPredictor, OwlEncodeTextOutput, OwlEncodeImageOutput
+from .clip_predictor import ClipPredictor, ClipEncodeTextOutput, ClipEncodeImageOutput
 from .image_preprocessor import ImagePreprocessor
 
 import torch
 import PIL.Image
-from typing import Optional, Tuple, List, Mapping
+from typing import Optional, Tuple, List, Mapping, Dict
 from dataclasses import dataclass
 
 
@@ -15,6 +15,7 @@ class TreeRoi:
     parent_id: int
     box: Tuple[float, float, float, float]
     labels: List[int]
+    scores: List[int]
 
 
 class TreePredictor(torch.nn.Module):
@@ -47,17 +48,124 @@ class TreePredictor(torch.nn.Module):
             label_encodings[label_indices[i]] = text_encodings.slice(i, i+1)
         return label_encodings
     
-    def predict(self, image: PIL.Image.Image, tree: Tree):
+    def predict(self, image: PIL.Image.Image, tree: Tree, threshold: float = 0.1):
         
         image_tensor = self.image_preprocessor(image)
 
-        root_roi = TreeRoi(
-            id=0,
-            parent_id=-1,
-            box=(0, 0, image.width, image.height),
-            labels=[0]
-        )
+        boxes = {
+            0: torch.tensor([[0, 0, image.width, image.height]], dtype=image_tensor.dtype, device=image_tensor.device)
+        }
+        scores = {
+            0: torch.tensor([1.], dtype=torch.float, device=image_tensor.device)
+        }
+        instance_ids = {
+            0: torch.tensor([0], dtype=torch.int64, device=image_tensor.device)
+        }
+        parent_instance_ids = {
+            0: torch.tensor([-1], dtype=torch.int64, device=image_tensor.device)
+        }
 
-        rois = [root_roi]
+        owl_image_encodings: Dict[int, OwlEncodeImageOutput] = {}
+        clip_image_encodings: Dict[int, ClipEncodeImageOutput] = {}
 
-        return rois
+        global_instance_id = 1
+
+        queue = [0]
+
+        while queue:
+            label_index = queue.pop(0)
+
+            detect_nodes = tree.find_detect_nodes_with_input(label_index)
+            classify_nodes = tree.find_classify_nodes_with_input(label_index)
+
+            # Run OWL image encode if required
+            if len(detect_nodes) > 0 and label_index not in owl_image_encodings:
+                owl_image_encodings[label_index] = self.owl_predictor.encode_rois(image_tensor, boxes[label_index])
+
+            # Run CLIP image encode if required
+            if len(detect_nodes) > 0 and label_index not in clip_image_encodings:
+                clip_image_encodings[label_index] = self.clip_predictor.encode_rois(image_tensor, boxes[label_index])
+
+            # Decode detect nodes
+            for node in detect_nodes:
+
+                if node.owl_text_encodings is None:
+                    raise RuntimeError("Missing owl text encodings for node.")
+
+                if node.input not in owl_image_encodings:
+                    raise RuntimeError("Missing owl image encodings for node.")
+
+                owl_node_output = self.owl_predictor.decode(
+                    owl_image_encodings[node.input], 
+                    node.owl_text_encodings, 
+                    threshold=threshold
+                )
+
+                num_detections = len(owl_node_output.labels)
+                instance_ids_for_node = torch.arange(global_instance_id, global_instance_id + num_detections, dtype=torch.int64, device=owl_node_output.labels.device)
+                parent_instance_ids_for_node = instance_ids[node.input][owl_node_output.input_indices]
+                global_instance_id += num_detections
+
+                for i in range(len(node.outputs)):
+                    mask = owl_node_output.labels == i
+                    out_idx = node.outputs[i]
+                    boxes[out_idx] = owl_node_output.boxes[mask]
+                    scores[out_idx] = owl_node_output.scores[mask]
+                    instance_ids[out_idx] = instance_ids_for_node[mask]
+                    parent_instance_ids[out_idx] = parent_instance_ids_for_node[mask]
+
+            for node in classify_nodes:
+
+                if node.clip_text_encodings is None:
+                    raise RuntimeError("Missing clip text encodings for node.")
+
+                if node.input not in clip_image_encodings:
+                    raise RuntimeError("Missing owl image encodings for node.")
+
+                clip_node_output = self.clip_predictor.decode(
+                    clip_image_encodings[node.input], 
+                    node.clip_text_encodings
+                )
+
+                parent_instance_ids_for_node = instance_ids[node.input]
+
+                for i in range(len(node.outputs)):
+                    mask = clip_node_output.labels == i
+                    output_buffer = node.outputs[i]
+                    scores[output_buffer] = clip_node_output.scores[mask].float()
+                    boxes[output_buffer] = boxes[label_index][mask].float()
+                    instance_ids[output_buffer] = instance_ids[node.input][mask]
+                    parent_instance_ids[output_buffer] = parent_instance_ids[node.input][mask]
+
+            for node in detect_nodes:
+                for buf in node.outputs:
+                    if buf in scores and len(scores[buf]) > 0:
+                        queue.append(buf)
+
+            for node in classify_nodes:
+                for buf in node.outputs:
+                    if buf in scores and len(scores[buf]) > 0:
+                        queue.append(buf)
+
+        # Fill outputs
+        output_rois: Dict[int, TreeRoi] = {}
+        for i in boxes.keys():
+            for box, score, instance_id, parent_instance_id in zip(boxes[i], scores[i], instance_ids[i], parent_instance_ids[i]):
+                instance_id = int(instance_id)
+                score = float(score)
+                box = box.tolist()
+                parent_instance_id = int(parent_instance_id)
+                if instance_id in output_rois:
+                    output_rois[instance_id].labels.append(i)
+                    output_rois[instance_id].scores.append(score)
+                else:
+                    output_rois[instance_id] = TreeRoi(
+                        id=instance_id,
+                        parent_id=parent_instance_id,
+                        box=box,
+                        labels=[i],
+                        scores=[score]
+                    )
+
+
+        return output_rois

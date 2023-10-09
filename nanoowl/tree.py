@@ -1,6 +1,8 @@
 import json
 from enum import Enum
 from typing import List, Optional, Mapping
+from .clip_predictor import ClipEncodeTextOutput
+from .owl_predictor import OwlEncodeTextOutput
 
 
 __all__ = [
@@ -22,6 +24,8 @@ class TreeNode:
     op: TreeOp
     input: int
     outputs: List[int]
+    owl_text_encodings: Optional[OwlEncodeTextOutput]
+    clip_text_encodings: Optional[ClipEncodeTextOutput]
 
     def __init__(self, op: TreeOp, input: int, outputs: Optional[List[int]] = None):
         self.op = op
@@ -178,3 +182,12 @@ class Tree:
     
     def get_detect_label_indices(self):
         return self.get_label_indices_with_op(TreeOp.DETECT)
+
+    def find_nodes_with_input(self, input_index: int):
+        return [n for n in self.nodes if n.input == input_index]
+
+    def find_detect_nodes_with_input(self, input_index: int):
+        return [n for n in self.find_nodes_with_input(input_index) if n.op == TreeOp.DETECT]
+
+    def find_classify_nodes_with_input(self, input_index: int):
+        return [n for n in self.find_nodes_with_input(input_index) if n.op == TreeOp.CLASSIFY]
