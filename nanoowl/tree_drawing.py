@@ -54,11 +54,11 @@ def draw_tree_output(image, output: TreeOutput, tree: Tree, draw_text=True, num_
             pt0,
             pt1,
             colors[box_depth % num_colors],
-            4
+            3
         )
         if draw_text:
-            offset_y = 12
-            offset_x = 0
+            offset_y = 30
+            offset_x = 8
             for label in detection.labels:
                 label_text = label_map[label]
                 cv2.putText(
