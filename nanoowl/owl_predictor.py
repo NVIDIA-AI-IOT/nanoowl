@@ -17,6 +17,9 @@
 import torch
 import numpy as np
 import PIL.Image
+import subprocess
+import tempfile
+import os
 from torchvision.ops import roi_align
 from transformers.models.owlvit.modeling_owlvit import OwlViTForObjectDetection
 from transformers.models.owlvit.processing_owlvit import OwlViTProcessor
@@ -364,7 +367,7 @@ class OwlPredictor(torch.nn.Module):
         )
     
     @staticmethod
-    def load_image_encoder_engine(engine_path: str, max_batch_size: int):
+    def load_image_encoder_engine(engine_path: str, max_batch_size: int = 1):
         import tensorrt as trt
         from torch2trt import TRTModule
 
@@ -413,6 +416,27 @@ class OwlPredictor(torch.nn.Module):
 
         return image_encoder
 
+    def build_image_encoder_engine(self, engine_path: str, max_batch_size: int = 1, fp16_mode = True, onnx_path: Optional[str] = None):
+
+        if onnx_path is None:
+            onnx_dir = tempfile.mkdtemp()
+            onnx_path = os.path.join(onnx_dir, "image_encoder.onnx")
+            self.export_image_encoder_onnx(onnx_path)
+
+        args = ["/usr/src/tensorrt/bin/trtexec"]
+    
+        args.append(f"--onnx={onnx_path}")
+        args.append(f"--saveEngine={engine_path}")
+
+        if fp16_mode:
+            args += ["--fp16"]
+
+        args += [f"--shapes=image:1x3x{self.image_size}x{self.image_size}"]
+
+        subprocess.call(args)
+
+        return self.load_image_encoder_engine(engine_path, max_batch_size)
+
     def predict(self, 
             image: PIL.Image, 
             text: List[str], 
@@ -431,3 +455,4 @@ class OwlPredictor(torch.nn.Module):
         image_encodings = self.encode_rois(image_tensor, rois, pad_square=pad_square)
 
         return self.decode(image_encodings, text_encodings, threshold)
+

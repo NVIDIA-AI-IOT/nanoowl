@@ -14,8 +14,23 @@
 # limitations under the License.
 
 
+import argparse
 from .owl_predictor import OwlPredictor
 
 
-predictor = OwlPredictor()
-predictor.export_image_encoder_onnx("data/owl_image_encoder.onnx")
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("output_path", type=str)
+    parser.add_argument("--model_name", type=str, default="google/owlvit-base-patch32")
+    parser.add_argument("--fp16_mode", type=bool, default=True)
+    args = parser.parse_args()
+    
+    predictor = OwlPredictor(
+        model_name=args.model_name
+    )
+
+    predictor.build_image_encoder_engine(
+        args.output_path,
+        fp16_mode=args.fp16_mode
+    )
