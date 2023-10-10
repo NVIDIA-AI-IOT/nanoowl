@@ -191,6 +191,8 @@ python3 tree_predict.py \
 
 ### Example 3 - Tree prediction (Live Camera)
 
+<img src="assets/jetson_person_2x.gif" height="50%" width="50%"/>
+
 This example demonstrates the tree predictor running on a live camera feed with
 live-edited text prompts.  To run the example
 
