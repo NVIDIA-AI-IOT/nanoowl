@@ -16,37 +16,46 @@
 
 import argparse
 import PIL.Image
-from nanoowl.utils.predictor import (
-    OwlVitPredictor
+from nanoowl.owl_predictor import (
+    OwlPredictor
 )
-from nanoowl.utils.drawing import draw_detections
+from nanoowl.owl_drawing import (
+    draw_owl_output
+)
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image", type=str, default="assets/owl_glove.jpg")
-    parser.add_argument("--text", action='append', required=True)
+    parser.add_argument("--image", type=str, default="../assets/owl_glove_small.jpg")
+    parser.add_argument("--prompt", type=str, default="")
     parser.add_argument("--threshold", type=float, default=0.1)
-    parser.add_argument("--output", type=str, default="data/owl_glove_out.jpg")
+    parser.add_argument("--output", type=str, default="../data/owl_glove_out.jpg")
     parser.add_argument("--model", type=str, default="google/owlvit-base-patch32")
-    parser.add_argument("--image_encoder_engine", type=str, default="data/owlvit-base-patch32-image-encoder.engine")
-    parser.add_argument("--output_path", type=str, default="data/predict_out.jpg")
+    parser.add_argument("--image_encoder_engine", type=str, default="../data/owlvit_image_encoder_patch32.engine")
     args = parser.parse_args()
 
+    text = args.prompt.split(',')
+    print(text)
 
-    predictor = OwlVitPredictor.from_pretrained(
+    predictor = OwlPredictor(
         args.model,
-        image_encoder_engine=args.image_encoder_engine,
-        device="cuda"
+        image_encoder_engine=args.image_encoder_engine
     )
 
     image = PIL.Image.open(args.image)
+    
+    text_encodings = predictor.encode_text(text)
 
-    text = args.text
+    output = predictor.predict(
+        image=image, 
+        text=text, 
+        text_encodings=text_encodings,
+        threshold=args.threshold,
+        pad_square=False
+    )
 
-    detections = predictor.predict(image=image, text=text, threshold=args.threshold)
-
-    draw_detections(image, detections)
+    print(output)
+    image = draw_owl_output(image, output, text=text, draw_text=True)
 
     image.save(args.output)
