@@ -122,6 +122,17 @@ That's it!  If everything is working properly, you should see a visualization sa
 
 <img src="assets/owl_predict_out.jpg" height="256px"/>
 
+This example demonstrates how to use the TensorRT optimized OWL-ViT model to
+detect objects by providing text descriptions of the object labels.
+
+To run the example, first navigate to the examples folder
+
+```bash
+cd examples
+```
+
+Then run the example
+
 ```bash
 python3 owl_predict.py \
     --prompt="[an owl, a glove]" \
@@ -129,9 +140,23 @@ python3 owl_predict.py \
     --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
 ```
 
+By default the output will be saved to ``data/owl_predict_out.jpg``.
+
 ### Example 2 - Tree Predictor
 
 <img src="assets/tree_predict_out.jpg" height="256px"/>
+
+This example demonstrates how to use the tree predictor class to detect and
+classify objects at any level.
+
+To run the example, first navigate to the examples folder
+
+```bash
+cd examples
+```
+
+To detect all owls, and the detect all wings and eyes in each detect owl region
+of interest, type
 
 ```bash
 python3 tree_predict.py \
@@ -140,12 +165,19 @@ python3 tree_predict.py \
     --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
 ```
 
+By default the output will be saved to ``data/tree_predict_out.jpg``.
+
+To classify the image as indoors or outdoors, type
+
 ```bash
 python3 tree_predict.py \
     --prompt="(indoors, outdoors)" \
     --threshold=0.15 \
     --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
 ```
+
+To classify the image as indoors or outdoors, and if it's outdoors then detect
+all owls, type
 
 ```bash
 python3 tree_predict.py \
@@ -154,11 +186,26 @@ python3 tree_predict.py \
     --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
 ```
 
+
 ### Example 3 - Tree Predictor (Live Camera)
 
-```bash
-python3 tree_demo.py ../../data/owl_image_encoder_patch32.engine
-```
+This example demonstrates the tree predictor running on a live camera feed with
+live-edited text prompts.  To run the example
+
+1. Ensure you have a camera device connected
+
+2. Launch the demo
+    ```bash
+    cd examples/tree_demo
+    python3 tree_demo.py ../../data/owl_image_encoder_patch32.engine
+    ```
+3. Second, open your browser to ``http://<ip address>:7860``
+4. Type whatever prompt you like to see what works!  Here are some examples
+    - Example: [a face [a nose, an eye, a mouth]]
+    - Example: [a face (interested, yawning / bored)]
+    - Example: (indoors, outdoors)
+
+
 
 <a id="acknowledgement"></a>
 ## 👏 Acknowledgement
