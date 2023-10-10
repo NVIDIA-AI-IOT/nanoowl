@@ -118,7 +118,7 @@ That's it!  If everything is working properly, you should see a visualization sa
 <a id="examples"></a>
 ## 🤸 Examples
 
-### Example 1 - Owl Predictor
+### Example 1 - Basic prediction
 
 <img src="assets/owl_predict_out.jpg" height="256px"/>
 
@@ -142,7 +142,7 @@ python3 owl_predict.py \
 
 By default the output will be saved to ``data/owl_predict_out.jpg``.
 
-### Example 2 - Tree Predictor
+### Example 2 - Tree prediction
 
 <img src="assets/tree_predict_out.jpg" height="256px"/>
 
@@ -187,7 +187,7 @@ python3 tree_predict.py \
 ```
 
 
-### Example 3 - Tree Predictor (Live Camera)
+### Example 3 - Tree prediction (Live Camera)
 
 This example demonstrates the tree predictor running on a live camera feed with
 live-edited text prompts.  To run the example
