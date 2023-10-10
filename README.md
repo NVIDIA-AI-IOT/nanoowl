@@ -109,7 +109,7 @@ NanoOWL runs real-time on Jetson Orin Nano.
     ```bash
     python3 owl_predict.py \
         --prompt="[an owl, a glove]" \
-        --threshold=0.15 \
+        --threshold=0.1 \
         --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
     ```
 
@@ -125,7 +125,7 @@ That's it!  If everything is working properly, you should see a visualization sa
 ```bash
 python3 owl_predict.py \
     --prompt="[an owl, a glove]" \
-    --threshold=0.15 \
+    --threshold=0.1 \
     --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
 ```
 
