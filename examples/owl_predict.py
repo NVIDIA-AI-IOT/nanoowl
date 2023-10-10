@@ -16,6 +16,8 @@
 
 import argparse
 import PIL.Image
+import time
+import torch
 from nanoowl.owl_predictor import (
     OwlPredictor
 )
@@ -33,6 +35,8 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, default="../data/owl_predict_out.jpg")
     parser.add_argument("--model", type=str, default="google/owlvit-base-patch32")
     parser.add_argument("--image_encoder_engine", type=str, default="../data/owlvit_image_encoder_patch32.engine")
+    parser.add_argument("--profile", action="store_true")
+    parser.add_argument("--num_profiling_runs", type=int, default=30)
     args = parser.parse_args()
 
     prompt = args.prompt.strip("][()")
@@ -58,7 +62,22 @@ if __name__ == "__main__":
         pad_square=False
     )
 
-    print(output)
+    if args.profile:
+        torch.cuda.current_stream().synchronize()
+        t0 = time.perf_counter_ns()
+        for i in range(args.num_profiling_runs):
+            output = predictor.predict(
+                image=image, 
+                text=text, 
+                text_encodings=text_encodings,
+                threshold=args.threshold,
+                pad_square=False
+            )
+        torch.cuda.current_stream().synchronize()
+        t1 = time.perf_counter_ns()
+        dt = (t1 - t0) / 1e9
+        print(f"PROFILING FPS: {args.num_profiling_runs/dt}")
+
     image = draw_owl_output(image, output, text=text, draw_text=True)
 
     image.save(args.output)
