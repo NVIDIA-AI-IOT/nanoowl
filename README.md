@@ -140,7 +140,9 @@ python3 owl_predict.py \
     --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
 ```
 
-By default the output will be saved to ``data/owl_predict_out.jpg``.
+By default the output will be saved to ``data/owl_predict_out.jpg``. 
+
+You can also use this example to profile inference.  Simply set the flag ``--profile``.
 
 ### Example 2 - Tree prediction
 
