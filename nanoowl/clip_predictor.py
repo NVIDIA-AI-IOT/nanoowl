@@ -17,12 +17,16 @@
 import torch
 import clip
 from torchvision.ops import roi_align
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from dataclasses import dataclass
+from .image_preprocessor import ImagePreprocessor
 
 
 __all__ = [
-    "ClipPredictor"
+    "ClipPredictor",
+    "ClipEncodeTextOutput",
+    "ClipEncodeImageOutput",
+    "ClipDecodeOutput"
 ]
 
 
@@ -52,7 +56,8 @@ class ClipPredictor(torch.nn.Module):
     def __init__(self,
             model_name: str = "ViT-B/32",
             image_size: Tuple[int, int] = (224, 224),
-            device: str = "cuda"
+            device: str = "cuda",
+            image_preprocessor: Optional[ImagePreprocessor] = None
         ):
         super().__init__()
         self.device = device
@@ -64,6 +69,7 @@ class ClipPredictor(torch.nn.Module):
                 torch.linspace(0., 1., self.image_size[0])
             )
         ).to(self.device).float()
+        self.image_preprocessor = image_preprocessor.to(self.device).eval() if image_preprocessor else ImagePreprocessor().to(self.device).eval()
     
     def get_device(self):
         return self.device
@@ -80,7 +86,7 @@ class ClipPredictor(torch.nn.Module):
         image_embeds = self.clip_model.encode_image(image)
         return ClipEncodeImageOutput(image_embeds=image_embeds)
 
-    def extract_rois(self, image: torch.Tensor, rois: torch.Tensor, pad_square: bool = True, padding_scale: float=1.2):
+    def extract_rois(self, image: torch.Tensor, rois: torch.Tensor, pad_square: bool = True, padding_scale: float=1.0):
         if len(rois) == 0:
             return torch.empty(
                 (0, image.shape[1], self.image_size[0], self.image_size[1]),
@@ -90,8 +96,8 @@ class ClipPredictor(torch.nn.Module):
 
         if pad_square:
             # pad square
-            w = padding_scale*(rois[..., 2] - rois[..., 0]) / 2
-            h = padding_scale*(rois[..., 3] - rois[..., 1]) / 2
+            w = padding_scale * (rois[..., 2] - rois[..., 0]) / 2
+            h = padding_scale * (rois[..., 3] - rois[..., 1]) / 2
             cx = (rois[..., 0] + rois[..., 2]) / 2
             cy = (rois[..., 1] + rois[..., 3]) / 2
             s = torch.max(w, h)
@@ -111,8 +117,8 @@ class ClipPredictor(torch.nn.Module):
 
         return roi_images, rois
 
-    def encode_rois(self, image: torch.Tensor, rois: torch.Tensor):
-        roi_images, rois = self.extract_rois(image, rois)
+    def encode_rois(self, image: torch.Tensor, rois: torch.Tensor, pad_square: bool = True, padding_scale: float = 1.0):
+        roi_images, rois = self.extract_rois(image, rois, pad_square, padding_scale)
         return self.encode_image(roi_images)
 
     def decode(self, 
@@ -134,3 +140,22 @@ class ClipPredictor(torch.nn.Module):
             labels=prob_max.indices,
             scores=prob_max.values
         )
+
+    def predict(self, 
+            image: PIL.Image, 
+            text: List[str], 
+            text_encodings: Optional[ClipEncodeTextOutput],
+            pad_square: bool = True,
+            threshold: float = 0.1
+        ) -> ClipDecodeOutput:
+
+        image_tensor = self.image_preprocessor.preprocess_pil_image(image)
+
+        if text_encodings is None:
+            text_encodings = self.encode_text(text)
+
+        rois = torch.tensor([[0, 0, image.height, image.width]], dtype=image_tensor.dtype, device=image_tensor.device)
+
+        image_encodings = self.encode_rois(image_tensor, rois, pad_square=pad_square)
+
+        return self.decode(image_encodings, text_encodings)

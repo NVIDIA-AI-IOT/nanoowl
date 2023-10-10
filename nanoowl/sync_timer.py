@@ -18,7 +18,12 @@ import time
 import torch
 
 
-class torch_timeit_sync():
+__all__ == [
+    "SyncTimer"
+]
+
+
+class SyncTimer():
 
     def __init__(self, name: str):
         self.name = name

@@ -16,15 +16,19 @@
 
 import torch
 import numpy as np
+import PIL.Image
 from torchvision.ops import roi_align
 from transformers.models.owlvit.modeling_owlvit import OwlViTForObjectDetection
 from transformers.models.owlvit.processing_owlvit import OwlViTProcessor
 from dataclasses import dataclass
-from typing import List, Optional
-from .profiling_utils import torch_timeit_sync
+from typing import List, Optional, Union, Tuple
+from .image_preprocessor import ImagePreprocessor
 
 __all__ = [
-    "OwlPredictor"
+    "OwlPredictor",
+    "OwlEncodeTextOutput",
+    "OwlEncodeImageOutput",
+    "OwlDecodeOutput"
 ]
 
 
@@ -139,7 +143,8 @@ class OwlPredictor(torch.nn.Module):
             model_name: str = "google/owlvit-base-patch32",
             device: str = "cuda",
             image_encoder_engine: Optional[str] = None,
-            image_encoder_engine_max_batch_size: int = 1
+            image_encoder_engine_max_batch_size: int = 1,
+            image_preprocessor: Optional[ImagePreprocessor] = None
         ):
 
         super().__init__()
@@ -162,6 +167,7 @@ class OwlPredictor(torch.nn.Module):
         if image_encoder_engine is not None:
             image_encoder_engine = OwlPredictor.load_image_encoder_engine(image_encoder_engine, image_encoder_engine_max_batch_size)
         self.image_encoder_engine = image_encoder_engine
+        self.image_preprocessor = image_preprocessor.to(self.device).eval() if image_preprocessor else ImagePreprocessor().to(self.device).eval()
 
     def get_num_patches(self):
         return self.num_patches
@@ -221,7 +227,7 @@ class OwlPredictor(torch.nn.Module):
         else:
             return self.encode_image_torch(image)
 
-    def extract_rois(self, image: torch.Tensor, rois: torch.Tensor, pad_square: bool = True, padding_scale:float=1.2):
+    def extract_rois(self, image: torch.Tensor, rois: torch.Tensor, pad_square: bool = True, padding_scale: float = 1.0):
         if len(rois) == 0:
             return torch.empty(
                 (0, image.shape[1], self.image_size, self.image_size),
@@ -253,9 +259,9 @@ class OwlPredictor(torch.nn.Module):
 
         return roi_images, rois
     
-    def encode_rois(self, image: torch.Tensor, rois: torch.Tensor, pad_square: bool = True):
+    def encode_rois(self, image: torch.Tensor, rois: torch.Tensor, pad_square: bool = True, padding_scale: float=1.0):
         # with torch_timeit_sync("extract rois"):
-        roi_images, rois = self.extract_rois(image, rois, pad_square)
+        roi_images, rois = self.extract_rois(image, rois, pad_square, padding_scale)
         # with torch_timeit_sync("encode images"):
         output = self.encode_image(roi_images)
         pred_boxes = _owl_box_roi_to_box_global(output.pred_boxes, rois[:, None, :])
@@ -407,3 +413,21 @@ class OwlPredictor(torch.nn.Module):
 
         return image_encoder
 
+    def predict(self, 
+            image: PIL.Image, 
+            text: List[str], 
+            text_encodings: Optional[OwlEncodeTextOutput],
+            pad_square: bool = True,
+            threshold: float = 0.1
+        ) -> OwlDecodeOutput:
+
+        image_tensor = self.image_preprocessor.preprocess_pil_image(image)
+
+        if text_encodings is None:
+            text_encodings = self.encode_text(text)
+
+        rois = torch.tensor([[0, 0, image.height, image.width]], dtype=image_tensor.dtype, device=image_tensor.device)
+
+        image_encodings = self.encode_rois(image_tensor, rois, pad_square=pad_square)
+
+        return self.decode(image_encodings, text_encodings, threshold)
