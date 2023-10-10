@@ -34,6 +34,11 @@ class TreeDetection:
     scores: List[int]
 
 
+@dataclass
+class TreeOutput:
+    detections: List[TreeDetection]
+    
+
 class TreePredictor(torch.nn.Module):
 
     def __init__(self,
@@ -47,7 +52,7 @@ class TreePredictor(torch.nn.Module):
         self.clip_predictor = ClipPredictor() if clip_predictor is None else clip_predictor
         self.image_preprocessor = ImagePreprocessor().to(device).eval() if image_preprocessor is None else image_preprocessor
 
-    def encode_clip_labels(self, tree: Tree) -> Dict[int, ClipEncodeTextOutput]:
+    def encode_clip_text(self, tree: Tree) -> Dict[int, ClipEncodeTextOutput]:
         label_indices = tree.get_classify_label_indices()
         if len(label_indices) == 0:
             return {}
@@ -58,7 +63,7 @@ class TreePredictor(torch.nn.Module):
             label_encodings[label_indices[i]] = text_encodings.slice(i, i+1)
         return label_encodings
     
-    def encode_owl_labels(self, tree: Tree) -> Dict[int, OwlEncodeTextOutput]:
+    def encode_owl_text(self, tree: Tree) -> Dict[int, OwlEncodeTextOutput]:
         label_indices = tree.get_detect_label_indices()
         if len(label_indices) == 0:
             return {}
@@ -79,10 +84,10 @@ class TreePredictor(torch.nn.Module):
         ):
 
         if clip_text_encodings is None:
-            clip_text_encodings = self.encode_clip_labels(tree)
+            clip_text_encodings = self.encode_clip_text(tree)
         
         if owl_text_encodings is None:
-            owl_text_encodings = self.encode_owl_labels(tree)
+            owl_text_encodings = self.encode_owl_text(tree)
         
         image_tensor = self.image_preprocessor.preprocess_pil_image(image)
         boxes = {
@@ -208,4 +213,4 @@ class TreePredictor(torch.nn.Module):
                         scores=[score]
                     )
 
-        return detections
+        return TreeOutput(detections=detections.values())

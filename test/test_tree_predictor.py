@@ -25,7 +25,7 @@ def test_encode_clip_labels():
     predictor = TreePredictor()
     tree = Tree.from_prompt("(sunny, rainy)")
 
-    text_encodings = predictor.encode_clip_labels(tree)
+    text_encodings = predictor.encode_clip_text(tree)
 
     assert len(text_encodings) == 2
     assert 1 in text_encodings
@@ -38,7 +38,7 @@ def test_encode_owl_labels():
     predictor = TreePredictor()
     tree = Tree.from_prompt("[a face [an eye, a nose]]")
 
-    text_encodings = predictor.encode_owl_labels(tree)
+    text_encodings = predictor.encode_owl_text(tree)
 
     assert len(text_encodings) == 3
     assert 1 in text_encodings
@@ -52,8 +52,8 @@ def test_encode_clip_owl_labels_mixed():
     predictor = TreePredictor()
     tree = Tree.from_prompt("[a face [an eye, a nose](happy, sad)]")
 
-    owl_text_encodings = predictor.encode_owl_labels(tree)
-    clip_text_encodings = predictor.encode_clip_labels(tree)
+    owl_text_encodings = predictor.encode_owl_text(tree)
+    clip_text_encodings = predictor.encode_clip_text(tree)
 
     assert len(owl_text_encodings) == 3
     assert len(clip_text_encodings) == 2

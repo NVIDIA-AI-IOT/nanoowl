@@ -2,7 +2,7 @@
 
 <p align="center"><a href="#usage"/>👍 Usage</a> - <a href="#performance"/>⏱️ Performance</a> - <a href="#setup">🛠️ Setup</a> - <a href="#examples">🤸 Examples</a> <br> - <a href="#acknowledgement">👏 Acknowledgment</a> - <a href="#see-also">🔗 See also</a></p>
 
-NanoOWL is a project that optimizes [OWL-ViT](https://huggingface.co/docs/transformers/model_doc/owlvit) to run 🔥 ***real-time*** 🔥 on [NVIDIA Jetson AGX Orin](https://store.nvidia.com/en-us/jetson/store) with [NVIDIA TensorRT](https://developer.nvidia.com/tensorrt).  
+NanoOWL is a project that optimizes [OWL-ViT](https://huggingface.co/docs/transformers/model_doc/owlvit) to run 🔥 ***real-time*** 🔥 on [NVIDIA Jetson AGX Orin](https://store.nvidia.com/en-us/jetson/store) with [NVIDIA TensorRT](https://developer.nvidia.com/tensorrt).  It also includes a new tree detection pipeline that combines OWL-ViT and CLIP to enable detection and classification at any level.
 
 <p align="center"><img src="assets/basic_usage_out.jpg" height="256px"/></p>
 
@@ -16,19 +16,22 @@ NanoOWL is a project that optimizes [OWL-ViT](https://huggingface.co/docs/transf
 You can use NanoOWL in Python like this
 
 ```python3
-from nanoowl.utils.predictor import OwlVitPredictor
+from nanoowl.owl_predictor import OwlPredictor
 
-predictor = OwlVitPredictor.from_pretrained(
+predictor = OwlPredictor(
     "google/owlvit-base-patch32",
     image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine"
 )
 
 image = PIL.Image.open("assets/owl_glove_small.jpg")
 
-detections = predictor.predict(image=image, text=["an owl", "a glove"], threshold=0.1)
+output = predictor.predict(image=image, text=["an owl", "a glove"], threshold=0.1)
 
-print(detections)
+print(output)
 ```
+
+Or better yet, to use OWL-ViT in conjunction with CLIP to detect and classify anything,
+at any level, check out the tree predictor example below!
 
 > See [Setup](#setup) for instructions on how to build the image encoder engine.
 
@@ -95,51 +98,64 @@ NanoOWL runs real-time on Jetson Orin Nano.
 3. Build the TensorRT engine for the OWL-ViT vision encoder
 
     ```bash
-    python3 -m nanoowl.tools.build_trt \
+    python3 -m nanoowl.build_image_encoder_engine \
         --model="google/owlvit-base-patch32" \
-        --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine"
+        --image_encoder_engine="data/owlvit_image_encoder_patch32.engine"
     ```
     
 
-4. Run the basic usage example to ensure everything is working
+4. Run an example prediction to ensure everything is working
 
     ```bash
-    python3 -m nanoowl.tools.predict \
-        --image="assets/owl_glove_small.jpg" \
-        --text="an owl" \
-        --model="google/owlvit-base-patch32" \
-        --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine" \
-        --threshold=0.1 \
-        --output_path="data/predict_out.jpg"
+    python3 owl_predict.py \
+        --prompt="[an owl, a glove]" \
+        --threshold=0.15 \
+        --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
     ```
 
-That's it!  If everything is working properly, you should see a visualization saved to ``data/predict_out.jpg``.  
+That's it!  If everything is working properly, you should see a visualization saved to ``data/owl_predict_out.jpg``.  
 
 <a id="examples"></a>
 ## 🤸 Examples
 
-### Example 1 - Gradio Demo
+### Example 1 - Owl Predictor
 
-<img src="assets/owl_gradio_demo.jpg" height="256"/>
 
 ```bash
-python3 examples/gradio_demo.py \
-    --model="google/owlvit-base-patch32" \
-    --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine" \
-    --port=7860
+python3 owl_predict.py \
+    --prompt="[an owl, a glove]" \
+    --threshold=0.15 \
+    --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
 ```
 
-### Example 2 - Live Camera
+### Example 2 - Tree Predictor
 
-<img src="assets/nanoowl_jetbot.gif"  height="40%" width="40%"/>
 
 ```bash
-python3 examples/live_camera.py \
-    --text="a toy robot" \
-    --model="google/owlvit-base-patch32" \
-    --image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine" \
-    --camera_device=0 \
-    --threshold=0.1
+python3 tree_predict.py \
+    --prompt="[an owl [a wing, an eye], a glove]" \
+    --threshold=0.15 \
+    --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
+```
+
+```bash
+python3 tree_predict.py \
+    --prompt="(indoors, outdoors)" \
+    --threshold=0.15 \
+    --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
+```
+
+```bash
+python3 tree_predict.py \
+    --prompt="(indoors, outdoors [an owl])" \
+    --threshold=0.15 \
+    --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
+```
+
+### Example 3 - Tree Predictor (Live Camera)
+
+```bash
+python3 tree_demo.py ../../data/owl_image_encoder_patch32.engine
 ```
 
 <a id="acknowledgement"></a>

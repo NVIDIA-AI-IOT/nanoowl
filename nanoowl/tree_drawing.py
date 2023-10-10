@@ -18,7 +18,7 @@ import PIL.Image
 import PIL.ImageDraw
 import cv2
 from .tree import Tree
-from .tree_predictor import TreeDetection
+from .tree_predictor import TreeOutput
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import List
@@ -34,7 +34,8 @@ def get_colors(count: int):
     return colors
 
 
-def draw_tree_detections(image, detections: List[TreeDetection], tree: Tree, draw_text=True, num_colors=8):
+def draw_tree_output(image, output: TreeOutput, tree: Tree, draw_text=True, num_colors=8):
+    detections = output.detections
     is_pil = not isinstance(image, np.ndarray)
     if is_pil:
         image = np.asarray(image)
@@ -43,7 +44,7 @@ def draw_tree_detections(image, detections: List[TreeDetection], tree: Tree, dra
     colors = get_colors(num_colors)
     label_map = tree.get_label_map()
     label_depths = tree.get_label_depth_map()
-    for detection in detections.values():
+    for detection in detections:
         box = [int(x) for x in detection.box]
         pt0 = (box[0], box[1])
         pt1 = (box[2], box[3])

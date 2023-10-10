@@ -28,7 +28,7 @@ from nanoowl.tree import Tree
 from nanoowl.tree_predictor import (
     TreePredictor
 )
-from nanoowl.tree_drawing import draw_tree_detections
+from nanoowl.tree_drawing import draw_tree_output
 from nanoowl.owl_predictor import OwlPredictor
 
 
@@ -91,8 +91,8 @@ if __name__ == "__main__":
                     logging.info("Received prompt: " + prompt)
                     try:
                         tree = Tree.from_prompt(prompt)
-                        clip_encodings = predictor.encode_clip_labels(tree)
-                        owl_encodings = predictor.encode_owl_labels(tree)
+                        clip_encodings = predictor.encode_clip_text(tree)
+                        owl_encodings = predictor.encode_owl_text(tree)
                         prompt_data = {
                             "tree": tree,
                             "clip_encodings": clip_encodings,
@@ -144,7 +144,7 @@ if __name__ == "__main__":
                 t1 = time.perf_counter_ns()
                 dt = (t1 - t0) / 1e9
                 tree = prompt_data_local['tree']
-                image = draw_tree_detections(image, detections, prompt_data_local['tree'])
+                image = draw_tree_output(image, detections, prompt_data_local['tree'])
 
             image_jpeg = bytes(
                 cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, IMAGE_QUALITY])[1]
