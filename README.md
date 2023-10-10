@@ -135,7 +135,7 @@ python3 owl_predict.py \
 
 ```bash
 python3 tree_predict.py \
-    --prompt="[an owl [a wing, an eye], a glove]" \
+    --prompt="[an owl [a wing, an eye]]" \
     --threshold=0.15 \
     --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
 ```
