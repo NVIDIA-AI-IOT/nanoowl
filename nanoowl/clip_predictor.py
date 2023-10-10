@@ -16,6 +16,7 @@
 
 import torch
 import clip
+import PIL.Image
 from torchvision.ops import roi_align
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
