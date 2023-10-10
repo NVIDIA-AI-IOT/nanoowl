@@ -64,8 +64,10 @@ def _owl_get_patch_size(hf_name: str):
     return patch_sizes[hf_name]
 
 
+# This function is modified from https://github.com/huggingface/transformers/blob/e8fdd7875def7be59e2c9b823705fbf003163ea0/src/transformers/models/owlvit/modeling_owlvit.py#L1333
+# Copyright 2022 Google AI and The HuggingFace Team. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 def _owl_normalize_grid_corner_coordinates(num_patches_per_side):
-
     box_coordinates = np.stack(
         np.meshgrid(np.arange(1, num_patches_per_side + 1), np.arange(1, num_patches_per_side + 1)), axis=-1
     ).astype(np.float32)
@@ -79,8 +81,10 @@ def _owl_normalize_grid_corner_coordinates(num_patches_per_side):
     return box_coordinates
 
 
+# This function is modified from https://github.com/huggingface/transformers/blob/e8fdd7875def7be59e2c9b823705fbf003163ea0/src/transformers/models/owlvit/modeling_owlvit.py#L1354
+# Copyright 2022 Google AI and The HuggingFace Team. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 def _owl_compute_box_bias(num_patches_per_side):
-    
     box_coordinates = _owl_normalize_grid_corner_coordinates(num_patches_per_side)
     box_coordinates = torch.clip(box_coordinates, 0.0, 1.0)
 
