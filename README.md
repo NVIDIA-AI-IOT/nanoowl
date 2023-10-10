@@ -99,8 +99,7 @@ NanoOWL runs real-time on Jetson Orin Nano.
 
     ```bash
     python3 -m nanoowl.build_image_encoder_engine \
-        --model="google/owlvit-base-patch32" \
-        --image_encoder_engine="data/owlvit_image_encoder_patch32.engine"
+        "data/owlvit_image_encoder_patch32.engine"
     ```
     
 
