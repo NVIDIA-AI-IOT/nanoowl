@@ -24,6 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("output_path", type=str)
     parser.add_argument("--model_name", type=str, default="google/owlvit-base-patch32")
     parser.add_argument("--fp16_mode", type=bool, default=True)
+    parser.add_argument("--onnx_opset", type=int, default=16)
     args = parser.parse_args()
     
     predictor = OwlPredictor(
@@ -32,5 +33,6 @@ if __name__ == "__main__":
 
     predictor.build_image_encoder_engine(
         args.output_path,
-        fp16_mode=args.fp16_mode
+        fp16_mode=args.fp16_mode,
+        onnx_opset=args.onnx_opset
     )
