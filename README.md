@@ -110,7 +110,7 @@ NanoOWL runs real-time on Jetson Orin Nano.
     python3 owl_predict.py \
         --prompt="[an owl, a glove]" \
         --threshold=0.1 \
-        --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
+        --image_encoder_engine=../data/owl_image_encoder_patch32.engine
     ```
 
 That's it!  If everything is working properly, you should see a visualization saved to ``data/owl_predict_out.jpg``.  
@@ -137,7 +137,7 @@ Then run the example
 python3 owl_predict.py \
     --prompt="[an owl, a glove]" \
     --threshold=0.1 \
-    --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
+    --image_encoder_engine=../data/owl_image_encoder_patch32.engine
 ```
 
 By default the output will be saved to ``data/owl_predict_out.jpg``. 
@@ -164,7 +164,7 @@ of interest, type
 python3 tree_predict.py \
     --prompt="[an owl [a wing, an eye]]" \
     --threshold=0.15 \
-    --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
+    --image_encoder_engine=../data/owl_image_encoder_patch32.engine
 ```
 
 By default the output will be saved to ``data/tree_predict_out.jpg``.
@@ -175,7 +175,7 @@ To classify the image as indoors or outdoors, type
 python3 tree_predict.py \
     --prompt="(indoors, outdoors)" \
     --threshold=0.15 \
-    --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
+    --image_encoder_engine=../data/owl_image_encoder_patch32.engine
 ```
 
 To classify the image as indoors or outdoors, and if it's outdoors then detect
@@ -185,7 +185,7 @@ all owls, type
 python3 tree_predict.py \
     --prompt="(indoors, outdoors [an owl])" \
     --threshold=0.15 \
-    --image_encoder_engine=../data/owl_image_encoder_engine_patch32.engine
+    --image_encoder_engine=../data/owl_image_encoder_patch32.engine
 ```
 
 
