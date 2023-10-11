@@ -416,12 +416,18 @@ class OwlPredictor(torch.nn.Module):
 
         return image_encoder
 
-    def build_image_encoder_engine(self, engine_path: str, max_batch_size: int = 1, fp16_mode = True, onnx_path: Optional[str] = None):
+    def build_image_encoder_engine(self, 
+            engine_path: str, 
+            max_batch_size: int = 1, 
+            fp16_mode = True, 
+            onnx_path: Optional[str] = None,
+            onnx_opset: int = 17
+        ):
 
         if onnx_path is None:
             onnx_dir = tempfile.mkdtemp()
             onnx_path = os.path.join(onnx_dir, "image_encoder.onnx")
-            self.export_image_encoder_onnx(onnx_path)
+            self.export_image_encoder_onnx(onnx_path, onnx_opset=onnx_opset)
 
         args = ["/usr/src/tensorrt/bin/trtexec"]
     
