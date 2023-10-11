@@ -33,5 +33,6 @@ if __name__ == "__main__":
 
     predictor.build_image_encoder_engine(
         args.output_path,
-        fp16_mode=args.fp16_mode
+        fp16_mode=args.fp16_mode,
+        onnx_opset=args.onnx_opset
     )
