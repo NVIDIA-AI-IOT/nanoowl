@@ -4,7 +4,8 @@
 
 NanoOWL is a project that optimizes [OWL-ViT](https://huggingface.co/docs/transformers/model_doc/owlvit) to run 🔥 ***real-time*** 🔥 on [NVIDIA Jetson Orin Platforms](https://store.nvidia.com/en-us/jetson/store) with [NVIDIA TensorRT](https://developer.nvidia.com/tensorrt).  NanoOWL also introduces a new "tree detection" pipeline that combines OWL-ViT and CLIP to enable nested detection and classification of anything, at any level, simply by providing text.
 
-<p align="center"><img src="assets/tree_predict_out.jpg" height="256px"/></p>
+<p align="center">
+<img src="assets/jetson_person_2x.gif" height="50%" width="50%"/></p>
 
 > Interested in detecting object masks as well?  Try combining NanoOWL with
 > [NanoSAM](https://github.com/NVIDIA-AI-IOT/nanosam) for zero-shot open-vocabulary 
