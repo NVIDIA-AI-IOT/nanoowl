@@ -74,7 +74,7 @@ if __name__ == "__main__":
                 image=image, 
                 text=text, 
                 text_encodings=text_encodings,
-                thresholds=thresholds,
+                threshold=thresholds,
                 pad_square=False
             )
         torch.cuda.current_stream().synchronize()
