@@ -274,8 +274,11 @@ class OwlPredictor(torch.nn.Module):
     def decode(self, 
             image_output: OwlEncodeImageOutput, 
             text_output: OwlEncodeTextOutput,
-            threshold: float = 0.1
+            threshold: Union[int, float, List[Union[int, float]]] = 0.1,
         ) -> OwlDecodeOutput:
+
+        if isinstance(threshold, (int, float)):
+            threshold = [threshold]
 
         num_input_images = image_output.image_class_embeds.shape[0]
 
@@ -290,8 +293,16 @@ class OwlPredictor(torch.nn.Module):
         scores_max = scores_sigmoid.max(dim=-1)
         labels = scores_max.indices
         scores = scores_max.values
-
-        mask = (scores > threshold)
+        masks = []
+        for i, thresh in enumerate(threshold):
+            label_mask = labels == i
+            score_mask = scores > thresh
+            obj_mask = torch.logical_and(label_mask,score_mask)
+            masks.append(obj_mask) 
+        
+        mask = masks[0]
+        for mask_t in masks[1:]:
+            mask = torch.logical_or(mask, mask_t)
 
         input_indices = torch.arange(0, num_input_images, dtype=labels.dtype, device=labels.device)
         input_indices = input_indices[:, None].repeat(1, self.num_patches)
@@ -447,8 +458,9 @@ class OwlPredictor(torch.nn.Module):
             image: PIL.Image, 
             text: List[str], 
             text_encodings: Optional[OwlEncodeTextOutput],
+            threshold: Union[int, float, List[Union[int, float]]] = 0.1,
             pad_square: bool = True,
-            threshold: float = 0.1
+            
         ) -> OwlDecodeOutput:
 
         image_tensor = self.image_preprocessor.preprocess_pil_image(image)
