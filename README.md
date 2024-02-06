@@ -99,6 +99,7 @@ NanoOWL runs real-time on Jetson Orin Nano.
 3. Build the TensorRT engine for the OWL-ViT vision encoder
 
     ```bash
+    mkdir -p data
     python3 -m nanoowl.build_image_encoder_engine \
         data/owl_image_encoder_patch32.engine
     ```
