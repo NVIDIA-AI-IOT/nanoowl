@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", type=str, default="../assets/owl_glove_small.jpg")
-    parser.add_argument("--prompt", type=str, default="an owl, a glove")
+    parser.add_argument("--prompt", type=str, default="[an owl, a glove]")
     parser.add_argument("--threshold", type=str, default="0.1,0.1")
     parser.add_argument("--output", type=str, default="../data/owl_predict_out.jpg")
     parser.add_argument("--model", type=str, default="google/owlvit-base-patch32")
@@ -45,7 +45,10 @@ if __name__ == "__main__":
 
     thresholds = args.threshold.strip("][()")
     thresholds = thresholds.split(',')
-    thresholds = [float(x) for x in thresholds]
+    if len(thresholds) == 1:
+        thresholds = float(thresholds[0])
+    else:
+        thresholds = [float(x) for x in thresholds]
     print(thresholds)
     
 
