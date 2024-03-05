@@ -94,6 +94,11 @@ NanoOWL runs real-time on Jetson Orin Nano.
         pip install ftfy regex tqdm
         pip install git+https://github.com/openai/CLIP.git
         ```
+    7. Install the aiohttp module
+
+        ```bash
+        python3 -m pip install aiohttp
+        ```
 
 2. Install the NanoOWL package.
 
