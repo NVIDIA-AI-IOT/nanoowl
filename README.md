@@ -89,9 +89,10 @@ NanoOWL runs real-time on Jetson Orin Nano.
     5. (optional) Install NanoSAM (for the instance segmentation example)
     6. Install the Clip Package
 
-        ```conda install --yes -c pytorch pytorch=1.7.1 torchvision cudatoolkit=11.0
-           pip install ftfy regex tqdm
-           pip install git+https://github.com/openai/CLIP.git
+        ```bash
+        conda install --yes -c pytorch pytorch=1.7.1 torchvision cudatoolkit=11.0
+        pip install ftfy regex tqdm
+        pip install git+https://github.com/openai/CLIP.git
         ```
 
 2. Install the NanoOWL package.
@@ -117,7 +118,7 @@ NanoOWL runs real-time on Jetson Orin Nano.
     cd examples
     python3 owl_predict.py \
         --prompt="[an owl, a glove]" \
-        --threshold=0.1 \
+        --threshold="0.1. 0.1" \
         --image_encoder_engine=../data/owl_image_encoder_patch32.engine
     ```
 
@@ -144,7 +145,7 @@ Then run the example
 ```bash
 python3 owl_predict.py \
     --prompt="[an owl, a glove]" \
-    --threshold=0.1 \
+    --threshold="0.1, 0.1" \
     --image_encoder_engine=../data/owl_image_encoder_patch32.engine
 ```
 
