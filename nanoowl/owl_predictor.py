@@ -23,6 +23,7 @@ import os
 from torchvision.ops import roi_align
 from transformers.models.owlvit.modeling_owlvit import OwlViTForObjectDetection
 from transformers.models.owlvit.processing_owlvit import OwlViTProcessor
+from transformers.models.owlvit.image_processing_owlvit import box_iou
 from transformers.models.owlv2.modeling_owlv2 import Owlv2ForObjectDetection
 from transformers.models.owlv2.processing_owlv2 import Owlv2Processor
 from dataclasses import dataclass
@@ -161,7 +162,10 @@ class OwlPredictor(torch.nn.Module):
 
         self.image_size = _owl_get_image_size(model_name)
         self.device = device
-        self.no_roi_align = no_roi_align
+        # original owlvit / owlv2 implementation do not use roi align to preprocess images, this can introduce distribution shifts; 
+        # so we have added an option to use the original owlvit / owlv2 image preprocessing
+        self.no_roi_align = no_roi_align 
+
         self.is_v2 = "owlv2" in model_name
         if not self.is_v2:
             self.model = OwlViTForObjectDetection.from_pretrained(model_name).to(self.device).eval()
@@ -169,6 +173,7 @@ class OwlPredictor(torch.nn.Module):
         else:
             self.model = Owlv2ForObjectDetection.from_pretrained(model_name).to(self.device).eval()
             self.processor = Owlv2Processor.from_pretrained(model_name)
+        
         self.patch_size = _owl_get_patch_size(model_name)
         self.num_patches_per_side = self.image_size // self.patch_size
         self.box_bias = _owl_compute_box_bias(self.num_patches_per_side).to(self.device)
@@ -179,6 +184,7 @@ class OwlPredictor(torch.nn.Module):
                 torch.linspace(0., 1., self.image_size)
             )
         ).to(self.device).float()
+
         self.image_encoder_engine = None
         if image_encoder_engine is not None:
             image_encoder_engine = OwlPredictor.load_image_encoder_engine(image_encoder_engine, image_encoder_engine_max_batch_size)
@@ -188,7 +194,7 @@ class OwlPredictor(torch.nn.Module):
         else:
             if self.no_roi_align:
                 resize_by_pad = self.is_v2
-                padding_value = 127.5
+                padding_value = 127.5 # note that for owlv2, the padding is 0.5 * 255 instead of 0, and padding is applied before image normalization
                 self.image_preprocessor = ImagePreprocessor(
                     resize=_owl_get_image_size(model_name), resize_by_pad=resize_by_pad, padding_value=padding_value
                 ).to(self.device).eval()
@@ -311,6 +317,7 @@ class OwlPredictor(torch.nn.Module):
             image_output: OwlEncodeImageOutput, 
             text_output: OwlEncodeTextOutput,
             threshold: Union[int, float, List[Union[int, float]]] = 0.1,
+            nms_threshold: int = 1.0,
         ) -> OwlDecodeOutput:
 
         if isinstance(threshold, (int, float)):
@@ -337,18 +344,48 @@ class OwlPredictor(torch.nn.Module):
             obj_mask = torch.logical_and(label_mask,score_mask)
             masks.append(obj_mask) 
         
-        mask = masks[0]
+        mask = masks[0] # [num_input_images, num_patches]
         for mask_t in masks[1:]:
             mask = torch.logical_or(mask, mask_t)
 
         input_indices = torch.arange(0, num_input_images, dtype=labels.dtype, device=labels.device)
         input_indices = input_indices[:, None].repeat(1, self.num_patches)
+        
+        labels = labels[mask]
+        scores = scores[mask]
+        boxes = image_output.pred_boxes[mask]
+        input_indices = input_indices[mask]
+
+        # apply non-maximum suppression
+        if nms_threshold < 1.0:
+            filtered_labels, filtered_scores, filtered_boxes, filtered_input_indices = [], [], [], []
+            for idx in range(num_input_images):  # batch
+                this_mask = input_indices == idx
+                this_labels, this_scores, this_boxes, this_inpu_indices = (
+                    labels[this_mask], scores[this_mask], boxes[this_mask], input_indices[this_mask]
+                )
+                for i in torch.argsort(-this_scores):
+                    if this_scores[i] < 0.001:
+                        continue
+
+                    ious = box_iou(this_boxes[i, :].unsqueeze(0), this_boxes)[0][0]
+                    ious[i] = -1.0  # Mask self-IoU.
+                    this_scores[ious > nms_threshold] = 0.0
+                this_nms_mask = this_scores > 0.001
+                filtered_labels.append(this_labels[this_nms_mask])
+                filtered_scores.append(this_scores[this_nms_mask])
+                filtered_boxes.append(this_boxes[this_nms_mask])
+                filtered_input_indices.append(this_inpu_indices[this_nms_mask])
+            labels = torch.cat(filtered_labels, dim=0)
+            scores = torch.cat(filtered_scores, dim=0)
+            boxes = torch.cat(filtered_boxes, dim=0)
+            input_indices = torch.cat(filtered_input_indices, dim=0)
 
         return OwlDecodeOutput(
-            labels=labels[mask],
-            scores=scores[mask],
-            boxes=image_output.pred_boxes[mask],
-            input_indices=input_indices[mask]
+            labels=labels,
+            scores=scores,
+            boxes=boxes,
+            input_indices=input_indices
         )
 
     @staticmethod
@@ -494,30 +531,38 @@ class OwlPredictor(torch.nn.Module):
         return self.load_image_encoder_engine(engine_path, max_batch_size)
 
     def predict(self, 
-            image: PIL.Image, 
+            image: Union[PIL.Image.Image, np.ndarray], 
             text: List[str], 
             text_encodings: Optional[OwlEncodeTextOutput],
             threshold: Union[int, float, List[Union[int, float]]] = 0.1,
+            nms_threshold: int = 1.0,
             pad_square: bool = True,
             
         ) -> OwlDecodeOutput:
 
-        image_tensor = self.image_preprocessor.preprocess_pil_image(image)
+        if isinstance(image, PIL.Image.Image):
+            image_width, image_height = image.size
+            image_tensor = self.image_preprocessor.preprocess_pil_image(image)
+        elif isinstance(image, np.ndarray):
+            assert image.dtype == np.uint8
+            image_height, image_width = image.shape[-2:]
+            image_tensor = self.image_preprocessor.preprocess_numpy_array(image)
+        else:
+            raise ValueError("image must be PIL.Image.Image or np.ndarray")
 
         if text_encodings is None:
             text_encodings = self.encode_text(text)
 
         if not self.no_roi_align:
-            rois = torch.tensor([[0, 0, image.width, image.height]], dtype=image_tensor.dtype, device=image_tensor.device)
+            rois = torch.tensor([[0, 0, image_width, image_height]], dtype=image_tensor.dtype, device=image_tensor.device)
             image_encodings = self.encode_rois(image_tensor, rois, pad_square=pad_square)
         else:
-            orig_image_w, orig_image_h = image.size
             resized_image_h, resized_image_w = image_tensor.shape[-2:]
             image_encodings = self.encode_image(image_tensor)
             pred_boxes = image_encodings.pred_boxes
             if not self.is_v2:
                 pred_boxes = pred_boxes * torch.tensor(
-                    [[[orig_image_w, orig_image_h, orig_image_w, orig_image_h]]], 
+                    [[[image_width, image_height, image_width, image_height]]], 
                     dtype=pred_boxes.dtype, device=pred_boxes.device
                 )
             else:
@@ -528,5 +573,5 @@ class OwlPredictor(torch.nn.Module):
                 )
             image_encodings.pred_boxes = pred_boxes
 
-        return self.decode(image_encodings, text_encodings, threshold)
+        return self.decode(image_encodings, text_encodings, threshold, nms_threshold)
 

@@ -13,7 +13,12 @@ NanoOWL is a project that optimizes [OWL-ViT](https://huggingface.co/docs/transf
 
 ## Xuanlin's Notes
 
-First, locally install tensorrt (no pip install); before you install tensorrt, follow the "deb" cuda install instruction to add the necessary gpg key to the urls of cuda packages (except last step "sudo apt install -y cuda").
+Installation instructions:
+
+```
+First, locally install tensorrt (no pip install); before you install tensorrt, 
+follow the "deb" cuda install instruction to add the necessary gpg key 
+to the urls of cuda packages (except last step "sudo apt install -y cuda").
 
 pip install onnx
 
@@ -21,19 +26,23 @@ git clone https://github.com/NVIDIA-AI-IOT/torch2trt
 cd torch2trt
 python setup.py install
 
-Install https://github.com/NVIDIA-AI-IOT/nanoowl
-
-# fp16 mode true or false?
+Install https://github.com/xuanlinli17/nanoowl   (through `pip install -e .`)
 ```
+
+```
+# TODO: investigate the impact of fp16 mode
+
 cd nanoowl
 python -m nanoowl.build_image_encoder_engine data/owl_image_encoder_large_patch14.engine --model_name google/owlvit-large-patch14
 python -m nanoowl.build_image_encoder_engine data/owlv2_image_encoder_base_patch16.engine --model_name google/owlv2-base-patch16-ensemble
 python -m nanoowl.build_image_encoder_engine data/owlv2_image_encoder_large_patch14.engine --model_name google/owlv2-large-patch14-ensemble
 
 cd examples
-python owl_predict.py     --prompt="[an owl, a glove]"     --threshold=0.1     --image_encoder_engine=../data/owl_image_encoder_large_patch14.engine  --model google/owlvit-large-patch14  --no_roi_align  --profile
-python owl_predict.py     --prompt="[an owl, a glove]"     --threshold=0.1     --image_encoder_engine=../data/owlv2_image_encoder_base_patch16.engine  --model google/owlv2-base-patch16-ensemble  --no_roi_align  --profile
-python owl_predict.py     --prompt="[an owl, a glove]"     --threshold=0.1     --image_encoder_engine=../data/owlv2_image_encoder_large_patch14.engine  --model google/owlv2-large-patch14-ensemble  --no_roi_align  --profile
+python owl_predict.py     --prompt="[an owl, a glove]"     --threshold=0.1  --nms_threshold=0.3   --image_encoder_engine=../data/owl_image_encoder_large_patch14.engine  --model google/owlvit-large-patch14  --no_roi_align  --profile
+python owl_predict.py     --prompt="[an owl, a glove]"     --threshold=0.1  --nms_threshold=0.3   --image_encoder_engine=../data/owlv2_image_encoder_base_patch16.engine  --model google/owlv2-base-patch16-ensemble  --no_roi_align  --profile
+python owl_predict.py     --prompt="[an owl, a glove]"     --threshold=0.1  --nms_threshold=0.3   --image_encoder_engine=../data/owlv2_image_encoder_large_patch14.engine  --model google/owlv2-large-patch14-ensemble  --no_roi_align  --profile
+
+python owl_image_folder_predict.py --threshold=0.15  --nms_threshold=0.3  --image_encoder_engine=../data/owlv2_image_encoder_large_patch14.engine  --model google/owlv2-large-patch14-ensemble  --no_roi_align
 ```
 
 
