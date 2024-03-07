@@ -153,13 +153,15 @@ class OwlPredictor(torch.nn.Module):
             device: str = "cuda",
             image_encoder_engine: Optional[str] = None,
             image_encoder_engine_max_batch_size: int = 1,
-            image_preprocessor: Optional[ImagePreprocessor] = None
+            image_preprocessor: Optional[ImagePreprocessor] = None,
+            no_roi_align: bool = False,
         ):
 
         super().__init__()
 
         self.image_size = _owl_get_image_size(model_name)
         self.device = device
+        self.no_roi_align = no_roi_align
         self.is_v2 = "owlv2" in model_name
         if not self.is_v2:
             self.model = OwlViTForObjectDetection.from_pretrained(model_name).to(self.device).eval()
@@ -181,7 +183,17 @@ class OwlPredictor(torch.nn.Module):
         if image_encoder_engine is not None:
             image_encoder_engine = OwlPredictor.load_image_encoder_engine(image_encoder_engine, image_encoder_engine_max_batch_size)
         self.image_encoder_engine = image_encoder_engine
-        self.image_preprocessor = image_preprocessor.to(self.device).eval() if image_preprocessor else ImagePreprocessor().to(self.device).eval()
+        if image_preprocessor is not None:
+            self.image_preprocessor = image_preprocessor.to(self.device).eval()
+        else:
+            if self.no_roi_align:
+                resize_by_pad = self.is_v2
+                padding_value = 127.5
+                self.image_preprocessor = ImagePreprocessor(
+                    resize=_owl_get_image_size(model_name), resize_by_pad=resize_by_pad, padding_value=padding_value
+                ).to(self.device).eval()
+            else:
+                self.image_preprocessor = ImagePreprocessor().to(self.device).eval()
 
     def get_num_patches(self):
         return self.num_patches
@@ -495,9 +507,26 @@ class OwlPredictor(torch.nn.Module):
         if text_encodings is None:
             text_encodings = self.encode_text(text)
 
-        rois = torch.tensor([[0, 0, image.width, image.height]], dtype=image_tensor.dtype, device=image_tensor.device)
-
-        image_encodings = self.encode_rois(image_tensor, rois, pad_square=pad_square)
+        if not self.no_roi_align:
+            rois = torch.tensor([[0, 0, image.width, image.height]], dtype=image_tensor.dtype, device=image_tensor.device)
+            image_encodings = self.encode_rois(image_tensor, rois, pad_square=pad_square)
+        else:
+            orig_image_w, orig_image_h = image.size
+            resized_image_h, resized_image_w = image_tensor.shape[-2:]
+            image_encodings = self.encode_image(image_tensor)
+            pred_boxes = image_encodings.pred_boxes
+            if not self.is_v2:
+                pred_boxes = pred_boxes * torch.tensor(
+                    [[[orig_image_w, orig_image_h, orig_image_w, orig_image_h]]], 
+                    dtype=pred_boxes.dtype, device=pred_boxes.device
+                )
+            else:
+                pred_boxes = pred_boxes * torch.tensor(
+                    [[[resized_image_w, resized_image_h, 
+                       resized_image_w, resized_image_h]]], 
+                    dtype=pred_boxes.dtype, device=pred_boxes.device
+                )
+            image_encodings.pred_boxes = pred_boxes
 
         return self.decode(image_encodings, text_encodings, threshold)
 

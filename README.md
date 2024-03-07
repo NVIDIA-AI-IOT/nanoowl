@@ -11,6 +11,33 @@ NanoOWL is a project that optimizes [OWL-ViT](https://huggingface.co/docs/transf
 > [NanoSAM](https://github.com/NVIDIA-AI-IOT/nanosam) for zero-shot open-vocabulary 
 > instance segmentation.
 
+## Xuanlin's Notes
+
+First, locally install tensorrt (no pip install); before you install tensorrt, follow the "deb" cuda install instruction to add the necessary gpg key to the urls of cuda packages (except last step "sudo apt install -y cuda").
+
+pip install onnx
+
+git clone https://github.com/NVIDIA-AI-IOT/torch2trt
+cd torch2trt
+python setup.py install
+
+Install https://github.com/NVIDIA-AI-IOT/nanoowl
+
+# fp16 mode true or false?
+```
+cd nanoowl
+python -m nanoowl.build_image_encoder_engine data/owl_image_encoder_large_patch14.engine --model_name google/owlvit-large-patch14
+python -m nanoowl.build_image_encoder_engine data/owlv2_image_encoder_base_patch16.engine --model_name google/owlv2-base-patch16-ensemble
+python -m nanoowl.build_image_encoder_engine data/owlv2_image_encoder_large_patch14.engine --model_name google/owlv2-large-patch14-ensemble
+
+cd examples
+python owl_predict.py     --prompt="[an owl, a glove]"     --threshold=0.1     --image_encoder_engine=../data/owl_image_encoder_large_patch14.engine  --model google/owlvit-large-patch14  --no_roi_align  --profile
+python owl_predict.py     --prompt="[an owl, a glove]"     --threshold=0.1     --image_encoder_engine=../data/owlv2_image_encoder_base_patch16.engine  --model google/owlv2-base-patch16-ensemble  --no_roi_align  --profile
+python owl_predict.py     --prompt="[an owl, a glove]"     --threshold=0.1     --image_encoder_engine=../data/owlv2_image_encoder_large_patch14.engine  --model google/owlv2-large-patch14-ensemble  --no_roi_align  --profile
+```
+
+
+
 <a id="usage"></a>
 ## 👍 Usage
 
@@ -21,7 +48,8 @@ from nanoowl.owl_predictor import OwlPredictor
 
 predictor = OwlPredictor(
     "google/owlvit-base-patch32",
-    image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine"
+    image_encoder_engine="data/owlvit-base-patch32-image-encoder.engine",
+    no_roi_align=True
 )
 
 image = PIL.Image.open("assets/owl_glove_small.jpg")
@@ -112,7 +140,8 @@ NanoOWL runs real-time on Jetson Orin Nano.
     python3 owl_predict.py \
         --prompt="[an owl, a glove]" \
         --threshold=0.1 \
-        --image_encoder_engine=../data/owl_image_encoder_patch32.engine
+        --image_encoder_engine=../data/owl_image_encoder_patch32.engine \
+        --no_roi_align
     ```
 
 That's it!  If everything is working properly, you should see a visualization saved to ``data/owl_predict_out.jpg``.  
@@ -139,7 +168,8 @@ Then run the example
 python3 owl_predict.py \
     --prompt="[an owl, a glove]" \
     --threshold=0.1 \
-    --image_encoder_engine=../data/owl_image_encoder_patch32.engine
+    --image_encoder_engine=../data/owl_image_encoder_patch32.engine \
+    --no_roi_align
 ```
 
 By default the output will be saved to ``data/owl_predict_out.jpg``. 
