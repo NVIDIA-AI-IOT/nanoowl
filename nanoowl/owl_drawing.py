@@ -58,7 +58,7 @@ def draw_owl_output(image, output: OwlDecodeOutput, text: List[str], draw_text=T
         if draw_text:
             offset_y = 12
             offset_x = 0
-            label_text = text[label_index]
+            label_text = text[label_index] + ' ' + f'{output.scores[i]:.2f}'
             cv2.putText(
                 image,
                 label_text,
