@@ -278,7 +278,7 @@ class OwlPredictor(torch.nn.Module):
         ) -> OwlDecodeOutput:
 
         if isinstance(threshold, (int, float)):
-            threshold = [threshold]
+            threshold = [threshold] * len(text_output.text_embeds) #apply single threshold to all labels 
 
         num_input_images = image_output.image_class_embeds.shape[0]
 
@@ -468,7 +468,7 @@ class OwlPredictor(torch.nn.Module):
         if text_encodings is None:
             text_encodings = self.encode_text(text)
 
-        rois = torch.tensor([[0, 0, image.height, image.width]], dtype=image_tensor.dtype, device=image_tensor.device)
+        rois = torch.tensor([[0, 0, image.width, image.height]], dtype=image_tensor.dtype, device=image_tensor.device)
 
         image_encodings = self.encode_rois(image_tensor, rois, pad_square=pad_square)
 
