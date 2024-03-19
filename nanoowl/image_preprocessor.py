@@ -80,12 +80,27 @@ class ImagePreprocessor(torch.nn.Module):
             if self.resizer is not None:
                 image = self.resizer(image)
             if self.resize_by_pad:
-                image = torch.nn.functional.pad(
-                    image, 
-                    [0, self.resize[-1] - image.size(-1), 0, self.resize[-2] - image.size(-2)],
-                    "constant",
-                    self.padding_value
-                )
+                if image.size(-1) <= self.resize[-1] and image.size(-2) <= self.resize[-2]:
+                    image = torch.nn.functional.pad(
+                        image, 
+                        [0, self.resize[-1] - image.size(-1), 0, self.resize[-2] - image.size(-2)],
+                        "constant",
+                        self.padding_value
+                    )
+                else:
+                    downsample_factor = max(image.size(-2) / self.resize[-2], image.size(-1) / self.resize[-1])
+                    target_size = (round(image.size(-2) / downsample_factor), round(image.size(-1) / downsample_factor))
+                    image = torchvision.transforms.functional.resize(
+                        image,
+                        target_size,
+                        interpolation=torchvision.transforms.InterpolationMode.BILINEAR
+                    )
+                    image = torch.nn.functional.pad(
+                        image, 
+                        [0, self.resize[-1] - image.size(-1), 0, self.resize[-2] - image.size(-2)],
+                        "constant",
+                        self.padding_value
+                    )
         
         if inplace:
             image = image.sub_(self.mean).div_(self.std)

@@ -571,6 +571,11 @@ class OwlPredictor(torch.nn.Module):
                        resized_image_w, resized_image_h]]], 
                     dtype=pred_boxes.dtype, device=pred_boxes.device
                 )
+                if (image_width >= resized_image_w) or (image_height >= resized_image_h):
+                    orig_to_resize_factor = max(image_height / resized_image_h, image_width / resized_image_w)
+                    pred_boxes = pred_boxes * torch.ones(
+                        [1, 1, 4], dtype=pred_boxes.dtype, device=pred_boxes.device
+                    ) * orig_to_resize_factor
             image_encodings.pred_boxes = pred_boxes
 
         return self.decode(image_encodings, text_encodings, threshold, nms_threshold)
