@@ -318,6 +318,7 @@ class OwlPredictor(torch.nn.Module):
             text_output: OwlEncodeTextOutput,
             threshold: Union[int, float, List[Union[int, float]]] = 0.1,
             nms_threshold: int = 1.0,
+            class_based_nms: bool = True
         ) -> OwlDecodeOutput:
 
         if isinstance(threshold, (int, float)):
@@ -370,7 +371,10 @@ class OwlPredictor(torch.nn.Module):
 
                     ious = box_iou(this_boxes[i, :].unsqueeze(0), this_boxes)[0][0]
                     ious[i] = -1.0  # Mask self-IoU.
-                    this_scores[ious > nms_threshold] = 0.0
+                    if not class_based_nms:
+                        this_scores[ious > nms_threshold] = 0.0
+                    else:
+                        this_scores[(this_labels == this_labels[i]) & (ious > nms_threshold)] = 0.0
                 this_nms_mask = this_scores > 0.001
                 filtered_labels.append(this_labels[this_nms_mask])
                 filtered_scores.append(this_scores[this_nms_mask])
@@ -536,6 +540,7 @@ class OwlPredictor(torch.nn.Module):
             text_encodings: Optional[OwlEncodeTextOutput],
             threshold: Union[int, float, List[Union[int, float]]] = 0.1,
             nms_threshold: int = 1.0,
+            class_based_nms: bool = True,
             pad_square: bool = True,
             
         ) -> OwlDecodeOutput:
@@ -578,5 +583,5 @@ class OwlPredictor(torch.nn.Module):
                     ) * orig_to_resize_factor
             image_encodings.pred_boxes = pred_boxes
 
-        return self.decode(image_encodings, text_encodings, threshold, nms_threshold)
+        return self.decode(image_encodings, text_encodings, threshold, nms_threshold, class_based_nms)
 
