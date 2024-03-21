@@ -80,13 +80,25 @@ NanoOWL runs real-time on Jetson Orin Nano.
     1. Install PyTorch
 
     2. Install [torch2trt](https://github.com/NVIDIA-AI-IOT/torch2trt)
-    3. Install NVIDIA TensorRT
+    3. Install NVIDIA [TensorRT](https://github.com/NVIDIA/TensorRT)
     4. Install the Transformers library
 
         ```bash
         python3 -m pip install transformers
         ```
     5. (optional) Install NanoSAM (for the instance segmentation example)
+    6. Install the Clip Package
+
+        ```bash
+        conda install --yes -c pytorch pytorch=1.7.1 torchvision cudatoolkit=11.0
+        pip install ftfy regex tqdm
+        pip install git+https://github.com/openai/CLIP.git
+        ```
+    7. Install the aiohttp module
+
+        ```bash
+        python3 -m pip install aiohttp
+        ```
 
 2. Install the NanoOWL package.
 
