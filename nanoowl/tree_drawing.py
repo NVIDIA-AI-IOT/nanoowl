@@ -38,7 +38,7 @@ def draw_tree_output(image, output: TreeOutput, tree: Tree, draw_text=True, num_
     detections = output.detections
     is_pil = not isinstance(image, np.ndarray)
     if is_pil:
-        image = np.asarray(image)
+        image = np.array(image)
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.75
     colors = get_colors(num_colors)
