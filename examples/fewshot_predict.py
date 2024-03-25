@@ -81,8 +81,8 @@ if __name__ == "__main__":
     )
 
     query_embeddings = [
-        predictor.encode_query_image(image=query_image, text=query_labels)
-        for query_image in query_images
+        predictor.encode_query_image(image=query_image, text=query_label)
+        for query_image, query_label in zip(query_images, query_labels)
     ]
 
     output = predictor.predict(image, query_embeddings, threshold=thresholds)
