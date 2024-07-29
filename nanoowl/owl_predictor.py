@@ -65,7 +65,6 @@ def _owl_get_image_size(hf_name: str):
 
 
 def _owl_get_patch_size(hf_name: str):
-
     patch_sizes = {
         "google/owlvit-base-patch32": 32,
         "google/owlvit-base-patch16": 16,
@@ -153,11 +152,13 @@ class OwlPredictor(torch.nn.Module):
                  device: str = "cuda",
                  image_encoder_engine: Optional[str] = None,
                  image_encoder_engine_max_batch_size: int = 1,
-                 image_preprocessor: Optional[ImagePreprocessor] = None
+                 image_preprocessor: Optional[ImagePreprocessor] = None,
+                 align_rois=True,
                  ):
 
         super().__init__()
 
+        self.align_rois = align_rois
         self.image_size = _owl_get_image_size(model_name)
         self.device = device
 
@@ -275,7 +276,15 @@ class OwlPredictor(torch.nn.Module):
             mask = (mask_x & mask_y)
 
         # extract rois
-        roi_images = roi_align(image, [rois], output_size=self.get_image_size())
+        if self.align_rois:
+            roi_images = roi_align(image, [rois], output_size=self.get_image_size())
+        else:
+            # Crop the image for each object detected
+            roi_images = []
+            for i in range(len(rois)):
+                bbox = tuple(rois[i])
+                object_image = image.crop(bbox)
+                roi_images.append(object_image)
 
         # mask rois
         if pad_square:
