@@ -33,10 +33,13 @@ class FewshotPredictor(torch.nn.Module):
         self,
         owl_predictor: Optional[OwlPredictor] = None,
         image_preprocessor: Optional[ImagePreprocessor] = None,
-        device: str = "cuda",
+        device: str = None,
     ):
         super().__init__()
-        self.owl_predictor = OwlPredictor() if owl_predictor is None else owl_predictor
+        device = device or "cuda" if torch.cuda.is_available() else "cpu"
+        self.owl_predictor = (
+            OwlPredictor(device=device) if owl_predictor is None else owl_predictor
+        )
         self.image_preprocessor = (
             ImagePreprocessor().to(device).eval()
             if image_preprocessor is None
