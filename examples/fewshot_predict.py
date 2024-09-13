@@ -73,10 +73,18 @@ if __name__ == "__main__":
     else:
         thresholds = [float(x) for x in thresholds]
 
-    predictor = FewshotPredictor(
-        owl_predictor=OwlPredictor(
-            args.model, image_encoder_engine=args.image_encoder_engine
+    engine_path = (
+        args.image_encoder_engine if os.path.isfile(args.image_encoder_engine) else None
+    )
+    if not os.path.isfile(args.image_encoder_engine):
+        print(
+            f"No image encoder engine found at",
+            "{os.path.abspath(args.image_encoder_engine)}.",
+            "Continuing without tensorrt...",
         )
+
+    predictor = FewshotPredictor(
+        owl_predictor=OwlPredictor(args.model, image_encoder_engine=engine_path)
     )
 
     query_embeddings = [
