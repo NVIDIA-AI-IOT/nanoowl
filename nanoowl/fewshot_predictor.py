@@ -123,12 +123,12 @@ class FewshotPredictor(torch.nn.Module):
     def encode_query_image(
         self,
         image: PIL.Image,
-        text: str,
+        text_hints: List[str],
         pad_square: bool = True,
     ) -> torch.Tensor:
         image_tensor = self.image_preprocessor.preprocess_pil_image(image)
 
-        text_encodings = self.encode_text([text])
+        text_encodings = self.encode_text(text_hints)
 
         rois = torch.tensor(
             [[0, 0, image.width, image.height]],
@@ -142,8 +142,8 @@ class FewshotPredictor(torch.nn.Module):
 
         return self.find_best_encoding(image_encodings, text_encodings)
 
-    def encode_text(self, text) -> OwlEncodeTextOutput:
-        return self.owl_predictor.encode_text(text)
+    def encode_text(self, texts: List[str]) -> OwlEncodeTextOutput:
+        return self.owl_predictor.encode_text(texts)
 
     @staticmethod
     def find_best_encoding(
