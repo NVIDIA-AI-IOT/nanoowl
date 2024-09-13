@@ -15,19 +15,15 @@
 
 
 import PIL.Image
-import pytest
-import torch
 from nanoowl.fewshot_predictor import FewshotPredictor
-from nanoowl.tree import Tree
-from nanoowl.tree_predictor import TreePredictor
 
 
 def test_encode_query_images():
-    predictor = FewshotPredictor()
+    predictor = FewshotPredictor(device="cpu")
 
     query_image = PIL.Image.open("assets/frog.jpg")
 
-    query_encoding = predictor.encode_query_image(query_image, "a frog")
+    query_encoding = predictor.encode_query_image(query_image, ["a frog"])
 
     assert len(query_encoding.shape) == 2
     assert query_encoding.shape[0] == 1
