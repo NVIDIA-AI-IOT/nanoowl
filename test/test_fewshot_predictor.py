@@ -45,15 +45,17 @@ def test_encode_labels():
 def test_fewshot_predictor_predict():
     predictor = FewshotPredictor()
 
-    image = PIL.Image.open("assets/cat_query_image.jpg")
+    image = PIL.Image.open("../assets/cat_query_image.jpg")
 
-    query_image = PIL.Image.open("assets/cat_image.jpg")
+    query_image = PIL.Image.open("../assets/cat_image.jpg")
 
     query_label = "a cat"
 
     thresholds = 0.7
 
-    query_embedding = predictor.encode_query_image(image=query_image, text=query_label)
+    query_embedding = predictor.encode_query_image(
+        image=query_image, text_hints=[query_label]
+    )
 
     detections = predictor.predict(image, [query_embedding], threshold=thresholds)
 

@@ -18,7 +18,6 @@ import argparse
 import os.path
 import time
 
-import numpy as np
 import PIL.Image
 import torch
 from nanoowl.fewshot_predictor import FewshotPredictor
