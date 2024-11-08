@@ -75,7 +75,6 @@ class FewshotPredictor(torch.nn.Module):
         threshold: Union[int, float, List[Union[int, float]]] = 0.1,
     ) -> OwlDecodeOutput:
         num_input_images = image_output.image_class_embeds.shape[0]
-        print(f"{num_input_images=}")
 
         image_class_embeds = image_output.image_class_embeds
         image_class_embeds = image_class_embeds / (
