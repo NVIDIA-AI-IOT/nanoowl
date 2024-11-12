@@ -231,6 +231,22 @@ live-edited text prompts.  To run the example
 
 
 
+### Example 4 - Fewshot prediction
+
+This example replicates the Image-Conditioned Detection example in the original OwlVit repo.  To run the example
+
+    ```bash
+    cd examples
+    python3 fewshot_predict.py \
+    --threshold="0.7,0.1" \
+    --image_encoder_engine=../data/owl_image_encoder_patch32.engine \
+    --query-image ../assets/cat_query_image.jpg ../assets/frog.jpg \
+    --query-label "a cat" "a frog"
+    ```
+
+By default the output will be saved to ``data/fewshot_predict_out.jpg``.
+
+
 <a id="acknowledgement"></a>
 ## 👏 Acknowledgement
 
