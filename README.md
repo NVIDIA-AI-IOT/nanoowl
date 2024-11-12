@@ -117,6 +117,24 @@ NanoOWL runs real-time on Jetson Orin Nano.
 
 That's it!  If everything is working properly, you should see a visualization saved to ``data/owl_predict_out.jpg``.  
 
+<a id="Creating a Wheel Release and Tagging"></a>
+## Versioning and creating the Wheel
+After you have made all of the required edits and you want to create a release of the repository. 
+Edit the ``setup.py`` file to include the new version number that the wheel should be and commit these changes.
+The following command creates a wheel in the ``dist`` directory:
+```
+python setup.py bdist_wheel
+```
+
+Now that the wheel exists, make sure to tag the repository with the version number of the wheel.
+```
+git tag v<version-number> -a -m "A commit message to describe the changes and version"
+git tag
+git push origin v<version-number>
+```
+
+Now share the wheel one the server please.
+
 <a id="examples"></a>
 ## 🤸 Examples
 
