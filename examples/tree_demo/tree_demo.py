@@ -39,7 +39,9 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=7860)
     parser.add_argument("--host", type=str, default="0.0.0.0")
     parser.add_argument("--camera", type=int, default=0)
+    parser.add_argument("--resolution", type=str, default="640x480", help="Camera resolution as WIDTHxHEIGHT")
     args = parser.parse_args()
+    width, height = map(int, args.resolution.split("x"))
 
     CAMERA_DEVICE = args.camera
     IMAGE_QUALITY = args.image_quality
@@ -121,6 +123,8 @@ if __name__ == "__main__":
         logging.info("Opening camera.")
 
         camera = cv2.VideoCapture(CAMERA_DEVICE)
+        camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
         logging.info("Loading predictor.")
 
