@@ -32,8 +32,10 @@ if __name__ == "__main__":
     parser.add_argument("--image", type=str, default="../assets/owl_glove_small.jpg")
     parser.add_argument("--prompt", type=str, default="[an owl, a glove]")
     parser.add_argument("--threshold", type=str, default="0.1,0.1")
+    parser.add_argument("--nms_threshold", type=float, default=0.3)
     parser.add_argument("--output", type=str, default="../data/owl_predict_out.jpg")
     parser.add_argument("--model", type=str, default="google/owlvit-base-patch32")
+    parser.add_argument('--no_roi_align', action='store_true')
     parser.add_argument("--image_encoder_engine", type=str, default="../data/owl_image_encoder_patch32.engine")
     parser.add_argument("--profile", action="store_true")
     parser.add_argument("--num_profiling_runs", type=int, default=30)
@@ -54,7 +56,8 @@ if __name__ == "__main__":
 
     predictor = OwlPredictor(
         args.model,
-        image_encoder_engine=args.image_encoder_engine
+        image_encoder_engine=args.image_encoder_engine,
+        no_roi_align=args.no_roi_align
     )
 
     image = PIL.Image.open(args.image)
@@ -66,6 +69,7 @@ if __name__ == "__main__":
         text=text, 
         text_encodings=text_encodings,
         threshold=thresholds,
+        nms_threshold=args.nms_threshold,
         pad_square=False
     )
 
@@ -78,6 +82,7 @@ if __name__ == "__main__":
                 text=text, 
                 text_encodings=text_encodings,
                 threshold=thresholds,
+                nms_threshold=args.nms_threshold,
                 pad_square=False
             )
         torch.cuda.current_stream().synchronize()

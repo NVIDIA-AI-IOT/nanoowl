@@ -36,7 +36,7 @@ def get_colors(count: int):
 def draw_owl_output(image, output: OwlDecodeOutput, text: List[str], draw_text=True):
     is_pil = not isinstance(image, np.ndarray)
     if is_pil:
-        image = np.asarray(image)
+        image = np.array(image)
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.75
     colors = get_colors(len(text))
@@ -58,7 +58,7 @@ def draw_owl_output(image, output: OwlDecodeOutput, text: List[str], draw_text=T
         if draw_text:
             offset_y = 12
             offset_x = 0
-            label_text = text[label_index]
+            label_text = text[label_index] + ' ' + f'{output.scores[i]:.2f}'
             cv2.putText(
                 image,
                 label_text,
