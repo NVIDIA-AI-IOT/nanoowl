@@ -75,20 +75,45 @@ NanoOWL runs real-time on Jetson Orin Nano.
 <a id="setup"></a>
 ## 🛠️ Setup
 
-1. Install the dependencies
+### Option 1: Automated Setup Script (Recommended for Ubuntu 24.04 with CUDA 12.1)
 
-    1. Install PyTorch
+For users on Ubuntu 24.04 with NVIDIA drivers and CUDA 12.1 already installed, a setup script is provided to automate the installation of dependencies, NVIDIA TensorRT, and torch2trt.
 
-    2. Install [torch2trt](https://github.com/NVIDIA-AI-IOT/torch2trt)
-    3. Install NVIDIA TensorRT
-    4. Install the Transformers library
+1.  **Ensure Prerequisites are Met:**
+    *   NVIDIA GPU drivers are installed.
+    *   CUDA Toolkit 12.1 is installed and `nvcc` is in your PATH.
+    *   You have `sudo` privileges.
 
+2.  **Run the script:**
+    ```bash
+    chmod +x setup.sh
+    ./setup.sh
+    ```
+    This script will:
+    *   Check for NVIDIA drivers and CUDA 12.1.
+    *   Install `git`, `python3-pip`, and `cmake`.
+    *   Install/upgrade Python packaging tools (`pip`, `wheel`, `setuptools`, `packaging`).
+    *   Install NVIDIA TensorRT (via pip, compatible with CUDA 12.x).
+    *   Clone the `torch2trt` repository and install it with plugins.
+
+After running the script, proceed to step 2 of the "Option 2: Manual Installation" steps below ("Install the NanoOWL package") and continue with the project-specific setup.
+
+### Option 2: Manual Installation
+
+If you are not using the automated script or are on a different setup, follow these manual steps:
+
+1.  **Install Core Dependencies:**
+    1.  Install PyTorch (ensure compatibility with your CUDA version).
+    2.  Install [torch2trt](https://github.com/NVIDIA-AI-IOT/torch2trt) (refer to their documentation for compatibility with your PyTorch and TensorRT versions).
+    3.  Install NVIDIA TensorRT (ensure compatibility with your CUDA and PyTorch versions).
+        *Note: Steps 1.2 and 1.3 are handled by the `setup.sh` script if you used Option 1.*
+    4.  Install the Transformers library:
         ```bash
         python3 -m pip install transformers
         ```
-    5. (optional) Install NanoSAM (for the instance segmentation example)
+    5.  (Optional) Install NanoSAM (for the instance segmentation example). Refer to the [NanoSAM repository](https://github.com/NVIDIA-AI-IOT/nanosam) for instructions.
 
-2. Install the NanoOWL package.
+2.  **Install the NanoOWL package.**
 
     ```bash
     git clone https://github.com/NVIDIA-AI-IOT/nanoowl
@@ -96,7 +121,7 @@ NanoOWL runs real-time on Jetson Orin Nano.
     python3 setup.py develop --user
     ```
 
-3. Build the TensorRT engine for the OWL-ViT vision encoder
+3.  **Build the TensorRT engine for the OWL-ViT vision encoder**
 
     ```bash
     mkdir -p data
@@ -105,7 +130,7 @@ NanoOWL runs real-time on Jetson Orin Nano.
     ```
     
 
-4. Run an example prediction to ensure everything is working
+4.  **Run an example prediction to ensure everything is working**
 
     ```bash
     cd examples
