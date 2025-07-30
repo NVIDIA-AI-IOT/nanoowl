@@ -36,7 +36,12 @@ def get_colors(count: int):
 def draw_owl_output(image, output: OwlDecodeOutput, text: List[str], draw_text=True):
     is_pil = not isinstance(image, np.ndarray)
     if is_pil:
-        image = np.asarray(image)
+        # Create a writable copy of the array to allow in-place modification
+        image_np = np.asarray(image).copy()
+    else:
+        # If it's already a NumPy array, ensure it's a copy to avoid
+        # modifying the original array outside this function's scope.
+        image_np = image.copy()
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.75
     colors = get_colors(len(text))
@@ -49,7 +54,7 @@ def draw_owl_output(image, output: OwlDecodeOutput, text: List[str], draw_text=T
         pt0 = (box[0], box[1])
         pt1 = (box[2], box[3])
         cv2.rectangle(
-            image,
+            image_np,
             pt0,
             pt1,
             colors[label_index],
@@ -60,7 +65,7 @@ def draw_owl_output(image, output: OwlDecodeOutput, text: List[str], draw_text=T
             offset_x = 0
             label_text = text[label_index]
             cv2.putText(
-                image,
+                image_np,
                 label_text,
                 (box[0] + offset_x, box[1] + offset_y),
                 font,
@@ -70,5 +75,6 @@ def draw_owl_output(image, output: OwlDecodeOutput, text: List[str], draw_text=T
                 cv2.LINE_AA
             )
     if is_pil:
-        image = PIL.Image.fromarray(image)
-    return image
+        return PIL.Image.fromarray(image_np)
+    else:
+        return image_np
