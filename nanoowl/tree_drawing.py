@@ -38,7 +38,10 @@ def draw_tree_output(image, output: TreeOutput, tree: Tree, draw_text=True, num_
     detections = output.detections
     is_pil = not isinstance(image, np.ndarray)
     if is_pil:
-        image = np.asarray(image)
+        image_np = np.asarray(image).copy()
+    else:
+        image_np = image.copy()
+
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.75
     colors = get_colors(num_colors)
@@ -50,7 +53,7 @@ def draw_tree_output(image, output: TreeOutput, tree: Tree, draw_text=True, num_
         pt1 = (box[2], box[3])
         box_depth = min(label_depths[i] for i in detection.labels)
         cv2.rectangle(
-            image,
+            image_np,
             pt0,
             pt1,
             colors[box_depth % num_colors],
@@ -62,7 +65,7 @@ def draw_tree_output(image, output: TreeOutput, tree: Tree, draw_text=True, num_
             for label in detection.labels:
                 label_text = label_map[label]
                 cv2.putText(
-                    image,
+                    image_np,
                     label_text,
                     (box[0] + offset_x, box[1] + offset_y),
                     font,
@@ -73,5 +76,6 @@ def draw_tree_output(image, output: TreeOutput, tree: Tree, draw_text=True, num_
                 )
                 offset_y += 18
     if is_pil:
-        image = PIL.Image.fromarray(image)
-    return image
+        return PIL.Image.fromarray(image_np)
+    else:
+        return image_np
