@@ -19,6 +19,7 @@ import argparse
 from aiohttp import web, WSCloseCode
 import logging
 import weakref
+import re
 import cv2
 import time
 import PIL.Image
@@ -38,13 +39,14 @@ if __name__ == "__main__":
     parser.add_argument("--image_quality", type=int, default=50)
     parser.add_argument("--port", type=int, default=7860)
     parser.add_argument("--host", type=str, default="0.0.0.0")
-    parser.add_argument("--camera", type=int, default=0)
+    parser.add_argument("--camera", type=int, default=0, help="0=USB/CSI (/dev/video0), 1=Browser (Websocket frames)")
     parser.add_argument("--resolution", type=str, default="640x480", help="Camera resolution as WIDTHxHEIGHT")
     args = parser.parse_args()
     width, height = map(int, args.resolution.split("x"))
 
-    CAMERA_DEVICE = args.camera
+    CAMERA_MODE = int(args.camera)
     IMAGE_QUALITY = args.image_quality
+    USE_BROWSER = False
 
     predictor = TreePredictor(
         owl_predictor=OwlPredictor(
@@ -53,7 +55,8 @@ if __name__ == "__main__":
     )
 
     prompt_data = None
-
+    latest_frame = None
+    
     def get_colors(count: int):
         cmap = plt.cm.get_cmap("rainbow", count)
         colors = []
@@ -76,7 +79,7 @@ if __name__ == "__main__":
 
     async def websocket_handler(request):
 
-        global prompt_data
+        global prompt_data, latest_frame, USE_BROWSER
 
         ws = web.WebSocketResponse()
 
@@ -88,8 +91,19 @@ if __name__ == "__main__":
 
         try:
             async for msg in ws:
-                logging.info(f"Received message from websocket.")
-                if "prompt" in msg.data:
+                # logging.info(f"Received data from websocket.")
+                if msg.type == web.WSMsgType.BINARY:
+                    latest_frame = cv2.imdecode(
+                        np.frombuffer(msg.data, np.uint8),
+                        cv2.IMREAD_COLOR
+                    )
+                elif msg.type == web.WSMsgType.TEXT:
+                    if msg.data == "use_browser":
+                        if not USE_BROWSER:
+                            USE_BROWSER = True
+                            logging.info("User switched to browser camera")
+
+                    elif msg.data.startswith("prompt:"):
                     header, prompt = msg.data.split(":")
                     logging.info("Received prompt: " + prompt)
                     try:
@@ -120,20 +134,29 @@ if __name__ == "__main__":
 
         loop = asyncio.get_running_loop()
 
-        logging.info("Opening camera.")
+        logging.info(f"Opening camera: {CAMERA_DEVICE}")
 
-        camera = cv2.VideoCapture(CAMERA_DEVICE)
-        camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        if CAMERA_DEVICE == 0:
+            logging.info(f"Opening V4L2 camera index: {CAMERA_DEVICE}")
+            camera = cv2.VideoCapture(CAMERA_DEVICE)
+            camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        else:
+            camera = None
 
         logging.info("Loading predictor.")
 
         def _read_and_encode_image():
 
-            re, image = camera.read()
-
-            if not re:
-                return re, None
+            if USE_BROWSER:
+                image = latest_frame
+                if image is None:
+                    return False, None
+                re = True
+            else:
+                re, image = camera.read()
+                if not re:
+                    return False, None
 
             image_pil = cv2_to_pil(image)
 
@@ -162,12 +185,14 @@ if __name__ == "__main__":
             re, image = await loop.run_in_executor(None, _read_and_encode_image)
             
             if not re:
-                break
+                await asyncio.sleep(0.01)
+                continue
             
             for ws in app["websockets"]:
                 await ws.send_bytes(image)
 
-        camera.release()
+        if camera is not None:
+            camera.release()
 
 
     async def run_detection_loop(app):

@@ -50,6 +50,10 @@
             width: 640px;
         }
 
+        #videoElement {
+            display: none;
+        }
+
     </style>
 
     <script type="text/javascript">
@@ -62,7 +66,10 @@
         }
 
         var ws = undefined
-        
+        var streaming = false
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
         console.log(location.host);
 
         ws = new WebSocket("ws://" + location.host + "/ws");
@@ -97,6 +104,47 @@
                 console.log("Received message.");
                 camera_image.src = reader.result;
             }
+        };
+
+        async function startCamera() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                console.warn("WebSocket not ready");
+                return;
+            }
+            ws.send("use_browser");
+            const video = document.getElementById("videoElement");
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+            });
+
+            video.srcObject = stream;
+            await new Promise(resolve => {
+                video.onloadedmetadata = () => resolve();
+            });
+
+            await video.play();
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            console.log("Browser camera started:", canvas.width, canvas.height);
+
+            streaming = true;
+            sendFrameLoop(video);
+        }
+
+        function sendFrameLoop(video) {
+            if (!streaming || ws.readyState !== WebSocket.OPEN) return;
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(function (blob) {
+                if (blob) ws.send(blob);
+            }, "image/jpeg", 0.7);
+
+            setTimeout(() => sendFrameLoop(video), 33);
         }
 
     </script>
@@ -106,7 +154,9 @@
         <h1>NanoOWL</h1>
         <img id="camera_image" src="" alt="Camera Image"/>
         <br/>
+        <button id="startButton" onclick="startCamera()">Use Browser</button>
         <input id="prompt_input" type="text" placeholder="[a face [an eye, a nose]]"/>
     </div>
+    <video id="videoElement" autoplay playsinline muted style="display:none;"></video>
 </body>
 </html>

@@ -75,6 +75,10 @@ NanoOWL runs real-time on Jetson Orin Nano.
 <a id="setup"></a>
 ## 🛠️ Setup
 
+| Repository/Tag | Date | Arch | Size |
+| :-- | :--: | :--: | :--: |
+| &nbsp;&nbsp;[`roylvzn/owlvit:latest`](https://hub.docker.com/repository/docker/roylvzn/owlvit/general) | `2025-12-25` | `arm64` | `9.66GB` |
+
 1. Install the dependencies
 
     1. Install PyTorch
